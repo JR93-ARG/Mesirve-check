@@ -1,34 +1,51 @@
-import { useState, useEffect } from "react";
-import { detectarDispositivo, camposFaltantes } from "./deteccion";
+import { useState, useEffect, useCallback } from "react";
+import { camposFaltantes } from "./deteccion";
+import PanelEscaneo from "./components/PanelEscaneo";
+import SelectorRubro from "./components/SelectorRubro";
 import BuscadorModelo from "./components/BuscadorModelo";
+import MedidorBarras from "./components/MedidorBarras";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
+const ETIQUETA_COMPONENTE = {
+  cpu: "Procesador",
+  gpu: "Gráficos",
+  ram: "Memoria RAM",
+  almacenamiento: "Almacenamiento",
+  conexion: "Conexión",
+};
+
+const ETIQUETA_VEREDICTO = {
+  recomendado: "Recomendado",
+  aceptable: "Aceptable, con salvedades",
+  "no recomendado": "No recomendado",
+};
+
 export default function PantallaAnalisis() {
   const [detectado, setDetectado] = useState(null);
-  const [faltantes, setFaltantes] = useState([]);
   const [confirmados, setConfirmados] = useState({});
   const [perfiles, setPerfiles] = useState([]);
   const [perfilId, setPerfilId] = useState(null);
   const [resultado, setResultado] = useState(null);
   const [cargando, setCargando] = useState(false);
 
+  const manejarDeteccion = useCallback((datos) => setDetectado(datos), []);
+
   useEffect(() => {
-    detectarDispositivo().then((datos) => {
-      setDetectado(datos);
-      setFaltantes(camposFaltantes(datos));
-    });
     fetch(`${API_URL}/api/perfiles`)
       .then((r) => r.json())
-      .then(setPerfiles);
+      .then(setPerfiles)
+      .catch(() => setPerfiles([]));
   }, []);
+
+  const faltantes = detectado ? camposFaltantes(detectado) : [];
 
   function actualizarCampo(campo, valor) {
     setConfirmados((prev) => ({ ...prev, [campo]: valor }));
   }
 
   async function analizar() {
-    if (!perfilId) return;
+    if (!perfilId || !detectado) return;
     setCargando(true);
     try {
       const body = {
@@ -56,79 +73,101 @@ export default function PantallaAnalisis() {
     }
   }
 
-  if (!detectado) {
-    return <p className="text-stone-500 text-sm">Leyendo tu dispositivo...</p>;
-  }
-
   return (
-    <div className="max-w-lg mx-auto p-6 space-y-6">
-      <div>
-        <h1 className="text-xl font-medium text-stone-900">¿Te sirve este equipo?</h1>
-        <p className="text-sm text-stone-500 mt-1">
-          Detectamos algunos datos automáticamente. Confirmá el resto para un resultado preciso.
-        </p>
-      </div>
+    <div className="min-h-screen bg-[var(--color-bg)]">
+      <div className="max-w-xl mx-auto px-5 py-12 sm:py-16 space-y-10">
+        <header className="space-y-2">
+          <p className="font-mono text-xs text-[var(--color-accent)] tracking-widest uppercase">
+            diagnóstico de hardware
+          </p>
+          <h1 className="font-display text-3xl sm:text-4xl font-semibold text-[var(--color-text)] leading-tight">
+            ¿Le sirve este equipo?
+          </h1>
+          <p className="text-[var(--color-text-muted)] text-sm leading-relaxed">
+            Leemos lo que tu navegador puede mostrar en vivo. Confirmá lo que falta y te decimos
+            si el equipo rinde para lo que lo vas a usar.
+          </p>
+        </header>
 
-      <section className="bg-stone-50 rounded-xl p-4 space-y-1 text-sm">
-        <p className="text-stone-400 text-xs uppercase tracking-wide mb-2">Detectado automáticamente</p>
-        <p>Núcleos de CPU: <span className="font-medium">{detectado.nucleos ?? "no disponible"}</span></p>
-        <p>Memoria RAM: <span className="font-medium">{detectado.ram_gb_aprox ? `~${detectado.ram_gb_aprox} GB` : "no disponible"}</span></p>
-        <p>Conexión: <span className="font-medium">{detectado.conexion_tipo ?? "no disponible"}</span></p>
-      </section>
+        <PanelEscaneo onCompletado={manejarDeteccion} />
 
-      <BuscadorModelo
-        onSeleccionar={(modelo) =>
-          actualizarCampo("modelo_equipo_id", modelo.id)
-        }
-      />
+        {detectado && (
+          <>
+            <section className="space-y-3">
+              <BuscadorModelo onSeleccionar={(m) => actualizarCampo("modelo_equipo_id", m.id)} />
 
-      {faltantes.includes("ram") && (
-        <div>
-          <label className="block text-sm font-medium text-stone-700 mb-1">RAM real (GB)</label>
-          <input
-            type="number"
-            onChange={(e) => actualizarCampo("ram_gb", Number(e.target.value))}
-            className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
-          />
-        </div>
-      )}
+              {faltantes.includes("ram") && (
+                <div>
+                  <label className="block font-mono text-xs text-[var(--color-text-muted)] mb-1.5 tracking-wide">
+                    ram_real_gb
+                  </label>
+                  <input
+                    type="number"
+                    onChange={(e) => actualizarCampo("ram_gb", Number(e.target.value))}
+                    className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-2.5 text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+                  />
+                </div>
+              )}
+            </section>
 
-      <div>
-        <label className="block text-sm font-medium text-stone-700 mb-1">¿Para qué lo vas a usar?</label>
-        <select
-          onChange={(e) => setPerfilId(Number(e.target.value))}
-          className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
-          defaultValue=""
-        >
-          <option value="" disabled>Elegí un rubro</option>
-          {perfiles.map((p) => (
-            <option key={p.id} value={p.id}>{p.nombre}</option>
-          ))}
-        </select>
-      </div>
+            <section className="space-y-3">
+              <p className="font-mono text-xs text-[var(--color-text-muted)] tracking-wide">
+                para_qué_lo_vas_a_usar
+              </p>
+              {perfiles.length === 0 ? (
+                <p className="text-sm text-[var(--color-text-faint)]">Cargando rubros...</p>
+              ) : (
+                <SelectorRubro perfiles={perfiles} seleccionado={perfilId} onSeleccionar={setPerfilId} />
+              )}
+            </section>
 
-      <button
-        onClick={analizar}
-        disabled={!perfilId || cargando}
-        className="w-full bg-teal-700 hover:bg-teal-800 disabled:bg-stone-300 text-white rounded-lg py-2.5 text-sm font-medium transition"
-      >
-        {cargando ? "Analizando..." : "Analizar"}
-      </button>
+            <button
+              onClick={analizar}
+              disabled={!perfilId || cargando}
+              className="w-full rounded-xl py-3 text-sm font-display font-medium tracking-wide transition-colors disabled:cursor-not-allowed"
+              style={{
+                background: !perfilId || cargando ? "var(--color-surface-2)" : "var(--color-accent)",
+                color: !perfilId || cargando ? "var(--color-text-faint)" : "#0c1210",
+              }}
+            >
+              {cargando ? "Analizando..." : "Analizar equipo"}
+            </button>
+          </>
+        )}
 
-      {resultado && (
-        <section className="rounded-xl border border-stone-200 p-4 space-y-2">
-          <p className="text-lg font-medium capitalize">{resultado.veredicto}</p>
-          <p className="text-sm text-stone-500">Puntaje: {resultado.score} / 100</p>
-          <div className="space-y-1 mt-3">
-            {resultado.desglose.map((d) => (
-              <div key={d.componente} className="flex justify-between text-sm">
-                <span className="capitalize text-stone-600">{d.componente}</span>
-                <span className="font-medium">{d.puntaje}/100</span>
+        {resultado && (
+          <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-mono text-xs text-[var(--color-text-muted)] tracking-wide mb-1">
+                  veredicto
+                </p>
+                <p className="font-display text-xl font-semibold text-[var(--color-text)]">
+                  {ETIQUETA_VEREDICTO[resultado.veredicto] ?? resultado.veredicto}
+                </p>
               </div>
-            ))}
-          </div>
-        </section>
-      )}
+              <p className="font-mono text-3xl font-medium text-[var(--color-text)]">
+                {Math.round(resultado.score)}
+                <span className="text-base text-[var(--color-text-faint)]">/100</span>
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {resultado.desglose.map((d) => (
+                <div key={d.componente} className="flex items-center gap-4">
+                  <span className="text-sm text-[var(--color-text-muted)] w-32 shrink-0">
+                    {ETIQUETA_COMPONENTE[d.componente] ?? d.componente}
+                  </span>
+                  <MedidorBarras puntaje={d.puntaje} segmentos={12} contenedorAlto="h-6" />
+                  <span className="font-mono text-xs text-[var(--color-text-faint)] ml-auto">
+                    {Math.round(d.puntaje)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
     </div>
   );
 }

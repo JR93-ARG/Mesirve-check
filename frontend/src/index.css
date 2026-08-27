@@ -1,1 +1,64 @@
 @import "tailwindcss";
+
+@theme {
+  --font-display: "Space Grotesk", sans-serif;
+  --font-body: "IBM Plex Sans", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+
+  --color-bg: #12151a;
+  --color-surface: #191d24;
+  --color-surface-2: #21262f;
+  --color-border: #2b3038;
+  --color-text: #e9e7e0;
+  --color-text-muted: #8b93a1;
+  --color-text-faint: #565d69;
+
+  --color-accent: #4fd8c4;
+  --color-accent-dim: #2c7a6d;
+  --color-accent-soft: #1c3833;
+
+  --color-good: #7bc47f;
+  --color-warn: #e0a24a;
+  --color-bad: #e07a6f;
+}
+
+html {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes escaneo {
+  0% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(2200%); opacity: 0; }
+}
+
+@keyframes parpadeo {
+  0%, 45% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.cursor-terminal::after {
+  content: "";
+  display: inline-block;
+  width: 0.5em;
+  height: 1em;
+  background: var(--color-accent);
+  margin-left: 0.15em;
+  vertical-align: text-bottom;
+  animation: parpadeo 1s step-end infinite;
+}
+
+.linea-escaneo {
+  animation: escaneo 2.6s ease-in-out infinite;
+}
