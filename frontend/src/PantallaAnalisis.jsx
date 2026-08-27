@@ -29,6 +29,7 @@ export default function PantallaAnalisis() {
   const [resultado, setResultado] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [errorPerfiles, setErrorPerfiles] = useState(false);
+  const [errorAnalisis, setErrorAnalisis] = useState(null);
 
   const manejarDeteccion = useCallback((datos) => setDetectado(datos), []);
 
@@ -55,6 +56,7 @@ export default function PantallaAnalisis() {
   async function analizar() {
     if (!perfilId || !detectado) return;
     setCargando(true);
+    setErrorAnalisis(null);
     try {
       const body = {
         perfil_id: perfilId,
@@ -75,7 +77,14 @@ export default function PantallaAnalisis() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      setResultado(await res.json());
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data || !Array.isArray(data.desglose)) {
+        throw new Error(`Respuesta inesperada del servidor (HTTP ${res.status})`);
+      }
+      setResultado(data);
+    } catch (e) {
+      console.error("Error al analizar:", e);
+      setErrorAnalisis("No pudimos completar el análisis. Probá de nuevo en unos segundos.");
     } finally {
       setCargando(false);
     }
@@ -144,10 +153,16 @@ export default function PantallaAnalisis() {
             >
               {cargando ? "Analizando..." : "Analizar equipo"}
             </button>
+
+            {errorAnalisis && (
+              <p className="text-sm text-center" style={{ color: "var(--color-bad)" }}>
+                {errorAnalisis}
+              </p>
+            )}
           </>
         )}
 
-        {resultado && (
+        {resultado && Array.isArray(resultado.desglose) && (
           <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 space-y-6">
             <div className="flex items-center justify-between">
               <div>
