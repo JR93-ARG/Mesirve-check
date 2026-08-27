@@ -21,6 +21,32 @@ const GUIAS = {
   },
 };
 
+const COMANDO_WINDOWS = `$c=Get-CimInstance Win32_Processor;$g=Get-CimInstance Win32_VideoController|Select -First 1;$m=Get-CimInstance Win32_ComputerSystem;$d=Get-CimInstance Win32_DiskDrive|Select -First 1;@{procesador=$c.Name;grafica=$g.Name;ram_gb=[math]::Round($m.TotalPhysicalMemory/1GB,1);almacenamiento_gb=[math]::Round($d.Size/1GB,1)}|ConvertTo-Json`;
+
+const COMANDO_MAC = `system_profiler -json SPHardwareDataType`;
+
+function BloqueComando({ comando }) {
+  const [copiado, setCopiado] = useState(false);
+  return (
+    <div className="space-y-1.5">
+      <div className="rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)] px-3 py-2.5 overflow-x-auto">
+        <code className="text-xs font-mono text-[var(--color-accent)] whitespace-pre">{comando}</code>
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          navigator.clipboard.writeText(comando);
+          setCopiado(true);
+          setTimeout(() => setCopiado(false), 1500);
+        }}
+        className="text-xs font-mono text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors"
+      >
+        {copiado ? "copiado ✓" : "copiar comando"}
+      </button>
+    </div>
+  );
+}
+
 export default function PegarSpecs({ sistemaOperativo, onInterpretado }) {
   const [abierto, setAbierto] = useState(false);
   const [texto, setTexto] = useState("");
@@ -112,6 +138,17 @@ export default function PegarSpecs({ sistemaOperativo, onInterpretado }) {
         </ol>
         {guia.atajo && <p className="text-xs text-[var(--color-text-faint)] mt-1">{guia.atajo}</p>}
       </div>
+
+      {(sistemaOperativo === "Windows" || sistemaOperativo === "macOS") && (
+        <div className="space-y-1.5 pt-1">
+          <p className="text-xs text-[var(--color-text-muted)]">
+            O, más exacto: abrí {sistemaOperativo === "Windows" ? "PowerShell" : "la Terminal"}, pegá este
+            comando y Enter — es de lectura, no instala ni descarga nada, podés leerlo antes de correrlo.
+            Después pegá el resultado acá abajo.
+          </p>
+          <BloqueComando comando={sistemaOperativo === "Windows" ? COMANDO_WINDOWS : COMANDO_MAC} />
+        </div>
+      )}
 
       <textarea
         value={texto}

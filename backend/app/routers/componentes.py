@@ -1,5 +1,6 @@
 import re
 import io
+import json
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -128,6 +129,26 @@ async def _mejor_match(db: AsyncSession, tipo: str, lineas: list[str]):
 
 
 async def _interpretar_texto(texto: str, db: AsyncSession) -> dict:
+    # Si lo que pegaron es JSON estructurado (de nuestro one-liner de
+    # PowerShell o de `system_profiler -json` en Mac), lo tratamos aparte:
+    # los valores de RAM/almacenamiento vienen exactos, no hay que adivinar
+    # con regex. Si falla el parseo, seguimos con el camino heurístico de
+    # siempre sobre texto libre.
+    estructurado = _intentar_parsear_json(texto)
+    if estructurado:
+        cpu_texto, gpu_texto, ram_gb, almacenamiento_gb = estructurado
+        cpu_match = await _mejor_match(db, "cpu", [cpu_texto] if cpu_texto else [])
+        gpu_match = await _mejor_match(db, "gpu", [gpu_texto] if gpu_texto else [])
+        return {
+            "cpu": cpu_match,
+            "gpu": gpu_match,
+            "ram_gb": ram_gb,
+            "almacenamiento_gb": almacenamiento_gb,
+            "tipo_almacenamiento": None,
+            "reconocido_algo": any([cpu_match, gpu_match, ram_gb, almacenamiento_gb]),
+            "fuente_datos": "estructurado",
+        }
+
     cpu_lineas = _lineas_candidatas(texto, ["processor", "procesador", "chip", "cpu"])
     gpu_lineas = _lineas_candidatas(texto, ["graphics", "gráfic", "grafic", "gpu", "video", "tarjeta"])
 
@@ -143,7 +164,38 @@ async def _interpretar_texto(texto: str, db: AsyncSession) -> dict:
         "almacenamiento_gb": almacenamiento_gb,
         "tipo_almacenamiento": tipo_almacenamiento,
         "reconocido_algo": any([cpu_match, gpu_match, ram_gb, almacenamiento_gb]),
+        "fuente_datos": "heuristico",
     }
+
+
+def _intentar_parsear_json(texto: str):
+    """Devuelve (cpu_texto, gpu_texto, ram_gb, almacenamiento_gb) si el
+    texto es JSON reconocible de alguno de nuestros one-liners, o None si
+    no es JSON o no tiene la forma esperada."""
+    try:
+        data = json.loads(texto)
+    except (json.JSONDecodeError, ValueError):
+        return None
+
+    # Forma del one-liner de Windows/PowerShell que armamos nosotros.
+    if isinstance(data, dict) and ("procesador" in data or "ram_gb" in data):
+        return (
+            data.get("procesador"),
+            data.get("grafica"),
+            data.get("ram_gb"),
+            data.get("almacenamiento_gb"),
+        )
+
+    # Forma de `system_profiler -json SPHardwareDataType` en Mac.
+    if isinstance(data, dict) and "SPHardwareDataType" in data:
+        hw = (data.get("SPHardwareDataType") or [{}])[0]
+        chip = hw.get("chip_type") or hw.get("cpu_type")
+        ram_texto = hw.get("physical_memory", "")
+        ram_match = re.search(r"(\d+(?:[.,]\d+)?)", ram_texto)
+        ram_gb = float(ram_match.group(1)) if ram_match else None
+        return (chip, None, ram_gb, None)
+
+    return None
 
 
 @router.post("/interpretar")
