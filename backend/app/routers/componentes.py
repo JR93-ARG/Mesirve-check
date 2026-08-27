@@ -170,30 +170,39 @@ async def _interpretar_texto(texto: str, db: AsyncSession) -> dict:
 
 def _intentar_parsear_json(texto: str):
     """Devuelve (cpu_texto, gpu_texto, ram_gb, almacenamiento_gb) si el
-    texto es JSON reconocible de alguno de nuestros one-liners, o None si
-    no es JSON o no tiene la forma esperada."""
-    try:
-        data = json.loads(texto)
-    except (json.JSONDecodeError, ValueError):
-        return None
+    texto contiene JSON reconocible de alguno de nuestros one-liners, o
+    None si no hay nada aprovechable. Busca el bloque {...} dentro del
+    texto en vez de exigir que TODO el pegado sea JSON puro, porque la
+    gente suele pegar la consola entera (con el prompt, avisos, etc.)
+    alrededor del resultado real."""
+    candidatos = [texto]
+    inicio, fin = texto.find("{"), texto.rfind("}")
+    if inicio != -1 and fin != -1 and fin > inicio:
+        candidatos.append(texto[inicio : fin + 1])
 
-    # Forma del one-liner de Windows/PowerShell que armamos nosotros.
-    if isinstance(data, dict) and ("procesador" in data or "ram_gb" in data):
-        return (
-            data.get("procesador"),
-            data.get("grafica"),
-            data.get("ram_gb"),
-            data.get("almacenamiento_gb"),
-        )
+    for candidato in candidatos:
+        try:
+            data = json.loads(candidato)
+        except (json.JSONDecodeError, ValueError):
+            continue
 
-    # Forma de `system_profiler -json SPHardwareDataType` en Mac.
-    if isinstance(data, dict) and "SPHardwareDataType" in data:
-        hw = (data.get("SPHardwareDataType") or [{}])[0]
-        chip = hw.get("chip_type") or hw.get("cpu_type")
-        ram_texto = hw.get("physical_memory", "")
-        ram_match = re.search(r"(\d+(?:[.,]\d+)?)", ram_texto)
-        ram_gb = float(ram_match.group(1)) if ram_match else None
-        return (chip, None, ram_gb, None)
+        # Forma del one-liner de Windows/PowerShell que armamos nosotros.
+        if isinstance(data, dict) and ("procesador" in data or "ram_gb" in data):
+            return (
+                data.get("procesador"),
+                data.get("grafica"),
+                data.get("ram_gb"),
+                data.get("almacenamiento_gb"),
+            )
+
+        # Forma de `system_profiler -json SPHardwareDataType` en Mac.
+        if isinstance(data, dict) and "SPHardwareDataType" in data:
+            hw = (data.get("SPHardwareDataType") or [{}])[0]
+            chip = hw.get("chip_type") or hw.get("cpu_type")
+            ram_texto = hw.get("physical_memory", "")
+            ram_match = re.search(r"(\d+(?:[.,]\d+)?)", ram_texto)
+            ram_gb = float(ram_match.group(1)) if ram_match else None
+            return (chip, None, ram_gb, None)
 
     return None
 
