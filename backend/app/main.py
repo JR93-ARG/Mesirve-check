@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
-from app.routers import perfiles, modelos, analisis
+from app.routers import perfiles, modelos, analisis, componentes
 from app.migraciones import aplicar_migraciones_pendientes
 
 logging.basicConfig(level=logging.INFO)
@@ -30,6 +30,7 @@ app.add_middleware(
 app.include_router(perfiles.router)
 app.include_router(modelos.router)
 app.include_router(analisis.router)
+app.include_router(componentes.router)
 
 
 @app.get("/")

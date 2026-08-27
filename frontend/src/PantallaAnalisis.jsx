@@ -3,6 +3,7 @@ import { camposFaltantes } from "./deteccion";
 import PanelEscaneo from "./components/PanelEscaneo";
 import SelectorRubro from "./components/SelectorRubro";
 import BuscadorModelo from "./components/BuscadorModelo";
+import PegarSpecs from "./components/PegarSpecs";
 import MedidorBarras from "./components/MedidorBarras";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -112,6 +113,17 @@ export default function PantallaAnalisis() {
           <>
             <section className="space-y-3">
               <BuscadorModelo onSeleccionar={(m) => actualizarCampo("modelo_equipo_id", m.id)} />
+
+              <PegarSpecs
+                sistemaOperativo={detectado.plataforma}
+                onInterpretado={(data) => {
+                  if (data.cpu) actualizarCampo("cpu_puntaje", data.cpu.puntaje_relativo);
+                  if (data.gpu) actualizarCampo("gpu_puntaje", data.gpu.puntaje_relativo);
+                  if (data.ram_gb) actualizarCampo("ram_gb", data.ram_gb);
+                  if (data.almacenamiento_gb) actualizarCampo("almacenamiento_gb", data.almacenamiento_gb);
+                  if (data.tipo_almacenamiento) actualizarCampo("tipo_almacenamiento", data.tipo_almacenamiento);
+                }}
+              />
 
               {faltantes.includes("ram") && (
                 <div>
