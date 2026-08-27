@@ -4,12 +4,12 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const GUIAS = {
   Windows: {
-    pasos: ["Config. → Sistema → Acerca de", "Copiá el bloque de 'Especificaciones del dispositivo', o sacale una captura a toda la pantalla"],
-    atajo: "Tecla Windows + Pausa también abre esa pantalla directo.",
+    pasos: ["Config. → Sistema → Acerca de", "Copiá el bloque de 'Especificaciones del dispositivo', o sacá una captura y pegala acá con Ctrl+V"],
+    atajo: "Windows + Mayús + S abre el Recorte y deja la captura lista para pegar, sin guardar ningún archivo.",
   },
   macOS: {
     pasos: ["Menú  → Acerca de esta Mac", "Copiá lo que muestra en 'Resumen' (chip, memoria, almacenamiento)"],
-    atajo: null,
+    atajo: "Cmd + Ctrl + Mayús + 4 captura y la deja en el portapapeles, lista para pegar acá.",
   },
   Android: {
     pasos: ["Ajustes → Acerca del teléfono → Información de software", "Copiá el modelo y el procesador si aparece"],
@@ -35,7 +35,7 @@ export default function PegarSpecs({ sistemaOperativo, onInterpretado }) {
     setResultado(null);
     try {
       const form = new FormData();
-      form.append("archivo", archivo);
+      form.append("archivo", archivo, archivo.name || "captura.png");
       const res = await fetch(`${API_URL}/api/componentes/interpretar-imagen`, {
         method: "POST",
         body: form,
@@ -48,6 +48,21 @@ export default function PegarSpecs({ sistemaOperativo, onInterpretado }) {
     } finally {
       setProcesando(false);
     }
+  }
+
+  function manejarPegado(e) {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        e.preventDefault();
+        const archivo = item.getAsFile();
+        if (archivo) interpretarImagen(archivo);
+        return;
+      }
+    }
+    // si no había imagen en el portapapeles, se deja que el pegado normal
+    // de texto siga su curso en el textarea
   }
 
   async function interpretar() {
@@ -101,7 +116,8 @@ export default function PegarSpecs({ sistemaOperativo, onInterpretado }) {
       <textarea
         value={texto}
         onChange={(e) => setTexto(e.target.value)}
-        placeholder="Pegá acá el texto completo que copiaste"
+        onPaste={manejarPegado}
+        placeholder="Pegá acá el texto, o directamente Ctrl+V con una captura de pantalla"
         rows={5}
         className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-xs font-mono text-[var(--color-text)] placeholder:text-[var(--color-text-faint)] focus:outline-none focus:border-[var(--color-accent)] transition-colors resize-none"
       />
