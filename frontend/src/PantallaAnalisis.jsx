@@ -5,12 +5,7 @@ import SelectorRubro from "./components/SelectorRubro";
 import BuscadorModelo from "./components/BuscadorModelo";
 import MedidorBarras from "./components/MedidorBarras";
 
-// En producción (single-service) queda vacío, así el fetch va a rutas
-// relativas ("/api/...") y pega contra este mismo dominio — no hace falta
-// configurar ninguna URL. Solo en desarrollo local, con el frontend y
-// backend como procesos separados, hace falta VITE_API_URL apuntando a
-// http://localhost:8000 (ver frontend/.env.example).
-const API_URL = import.meta.env.VITE_API_URL || "";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const ETIQUETA_COMPONENTE = {
   cpu: "Procesador",

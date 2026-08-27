@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+import json
 
 from app.database import get_db
 from app.schemas import SolicitudAnalisis, RespuestaAnalisis
@@ -81,11 +82,11 @@ async def crear_analisis(solicitud: SolicitudAnalisis, db: AsyncSession = Depend
     row = (await db.execute(insert_query, {
         "perfil_id": solicitud.perfil_id,
         "modelo_id": solicitud.modelo_equipo_id,
-        "detectados": solicitud.datos_detectados,
-        "confirmados": solicitud.datos_confirmados.model_dump(),
+        "detectados": json.dumps(solicitud.datos_detectados),
+        "confirmados": json.dumps(solicitud.datos_confirmados.model_dump()),
         "fuente": solicitud.fuente,
         "score": round(score_final, 1),
-        "detalle": desglose,
+        "detalle": json.dumps(desglose),
     })).mappings().first()
     await db.commit()
 
