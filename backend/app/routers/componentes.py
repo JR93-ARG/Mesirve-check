@@ -61,32 +61,54 @@ def _extraer_almacenamiento_gb(texto: str):
     return valor, tipo_normalizado
 
 
+def _limpiar_descriptor(linea: str) -> str:
+    """De 'Procesador\tIntel(R) Core(TM) i3-10105 CPU @ 3.70GHz (3.70 GHz)'
+    saca 'Intel Core i3-10105', descartando ruido que nunca va a estar en
+    el catálogo (marcas registradas, velocidad de reloj, la palabra CPU)."""
+    partes = re.split(r"[\t:]", linea, maxsplit=1)
+    texto = partes[-1] if len(partes) > 1 else partes[0]
+    texto = re.sub(r"\((?:R|TM|C)\)", "", texto, flags=re.IGNORECASE)
+    texto = re.sub(r"@.*$", "", texto)
+    texto = re.sub(r"\bCPU\b", "", texto, flags=re.IGNORECASE)
+    texto = re.sub(r"[^\w\s.-]", " ", texto)
+    return re.sub(r"\s+", " ", texto).strip()
+
+
 def _lineas_candidatas(texto: str, palabras_clave: list[str]) -> list[str]:
     candidatas = []
     for linea in texto.splitlines():
         if any(p in linea.lower() for p in palabras_clave):
             candidatas.append(linea)
-    return candidatas or texto.splitlines()
+    return candidatas
 
 
 async def _mejor_match(db: AsyncSession, tipo: str, lineas: list[str]):
+    """Compara por similitud de trigramas contra el catálogo — tolera SKUs
+    que no están exactos (ej. i3-10105 pegado vs i3-10100 cargado), a
+    diferencia de una búsqueda de texto que exige coincidencia de palabras
+    completas. UMBRAL_MINIMO evita devolver algo random cuando no hay
+    ningún parecido real."""
+    UMBRAL_MINIMO = 0.15
+    mejor = None
     for linea in lineas:
-        limpia = re.sub(r"[^\w\sáéíóúñ.-]", " ", linea, flags=re.IGNORECASE).strip()
-        if len(limpia) < 3:
+        descriptor = _limpiar_descriptor(linea)
+        if len(descriptor) < 3:
             continue
         query = text("""
             SELECT id, marca, modelo, puntaje_relativo,
-                   ts_rank(to_tsvector('spanish', marca || ' ' || modelo), plainto_tsquery('spanish', :texto)) AS rango
+                   similarity(marca || ' ' || modelo, :texto) AS puntaje_similitud
             FROM componentes
             WHERE tipo = :tipo
-              AND to_tsvector('spanish', marca || ' ' || modelo) @@ plainto_tsquery('spanish', :texto)
-            ORDER BY rango DESC
+            ORDER BY puntaje_similitud DESC
             LIMIT 1
         """)
-        fila = (await db.execute(query, {"texto": limpia, "tipo": tipo})).mappings().first()
-        if fila:
-            return dict(fila)
-    return None
+        fila = (await db.execute(query, {"texto": descriptor, "tipo": tipo})).mappings().first()
+        if fila and fila["puntaje_similitud"] >= UMBRAL_MINIMO:
+            if not mejor or fila["puntaje_similitud"] > mejor["puntaje_similitud"]:
+                mejor = dict(fila)
+    if mejor:
+        mejor["exacto"] = mejor["puntaje_similitud"] >= 0.45
+    return mejor
 
 
 @router.post("/interpretar")
