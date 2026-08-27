@@ -4,7 +4,7 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const GUIAS = {
   Windows: {
-    pasos: ["Config. → Sistema → Acerca de", "Copiá el bloque de 'Especificaciones del dispositivo'"],
+    pasos: ["Config. → Sistema → Acerca de", "Copiá el bloque de 'Especificaciones del dispositivo', o sacale una captura a toda la pantalla"],
     atajo: "Tecla Windows + Pausa también abre esa pantalla directo.",
   },
   macOS: {
@@ -28,6 +28,27 @@ export default function PegarSpecs({ sistemaOperativo, onInterpretado }) {
   const [resultado, setResultado] = useState(null);
 
   const guia = GUIAS[sistemaOperativo] ?? GUIAS.Windows;
+
+  async function interpretarImagen(archivo) {
+    if (!archivo) return;
+    setProcesando(true);
+    setResultado(null);
+    try {
+      const form = new FormData();
+      form.append("archivo", archivo);
+      const res = await fetch(`${API_URL}/api/componentes/interpretar-imagen`, {
+        method: "POST",
+        body: form,
+      });
+      const data = await res.json();
+      setResultado(data);
+      if (data.reconocido_algo) onInterpretado(data);
+    } catch (e) {
+      console.error("Error al interpretar imagen:", e);
+    } finally {
+      setProcesando(false);
+    }
+  }
 
   async function interpretar() {
     if (!texto.trim()) return;
@@ -97,6 +118,30 @@ export default function PegarSpecs({ sistemaOperativo, onInterpretado }) {
       >
         {procesando ? "Analizando texto..." : "Interpretar"}
       </button>
+
+      <div className="flex items-center gap-2 text-xs text-[var(--color-text-faint)]">
+        <span className="flex-1 h-px bg-[var(--color-border)]" />
+        <span>o subí una captura de pantalla</span>
+        <span className="flex-1 h-px bg-[var(--color-border)]" />
+      </div>
+
+      <label className="block">
+        <input
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => interpretarImagen(e.target.files?.[0])}
+        />
+        <span
+          className="block text-center text-sm rounded-lg border border-dashed px-4 py-2.5 cursor-pointer transition-colors"
+          style={{ borderColor: "var(--color-border)", color: "var(--color-text-muted)" }}
+        >
+          {procesando ? "Leyendo imagen..." : "Elegir captura de pantalla"}
+        </span>
+      </label>
+      <p className="text-xs text-[var(--color-text-faint)]">
+        Menos preciso que pegar texto, pero sirve para datos que no aparecen en el texto copiado (como la GPU en Windows 11).
+      </p>
 
       {resultado && (
         <div className="text-xs font-mono space-y-1 pt-1 border-t border-[var(--color-border)]">

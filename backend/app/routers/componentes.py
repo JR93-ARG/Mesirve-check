@@ -1,8 +1,11 @@
 import re
-from fastapi import APIRouter, Depends
+import io
+from fastapi import APIRouter, Depends, UploadFile, File
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
+from PIL import Image
+import pytesseract
 
 from app.database import get_db
 
@@ -31,8 +34,12 @@ class TextoPegado(BaseModel):
 # Patrones de RAM: "16 GB", "16.0 GB", "Memoria RAM  16,0 GB", "16384 MB"
 PATRON_RAM_GB = re.compile(r"(\d+(?:[.,]\d+)?)\s*GB", re.IGNORECASE)
 PATRON_RAM_MB = re.compile(r"(\d+)\s*MB", re.IGNORECASE)
-PATRON_ALMACENAMIENTO = re.compile(
-    r"(\d+(?:[.,]\d+)?)\s*(GB|TB)\b.{0,20}?\b(SSD|HDD|eMMC|almacenamiento|storage|disco)",
+PATRON_ALMACENAMIENTO_DESPUES = re.compile(
+    r"(\d+(?:[.,]\d+)?)\s*(GB|TB)\b.{0,20}?\b(SSD|HDD|eMMC)\b",
+    re.IGNORECASE,
+)
+PATRON_ALMACENAMIENTO_ANTES = re.compile(
+    r"\b(almacenamiento|storage|disco)\b.{0,25}?(\d+(?:[.,]\d+)?)\s*(GB|TB)",
     re.IGNORECASE,
 )
 
@@ -49,16 +56,25 @@ def _extraer_ram_gb(texto: str) -> float | None:
 
 
 def _extraer_almacenamiento_gb(texto: str):
-    m = PATRON_ALMACENAMIENTO.search(texto)
-    if not m:
-        return None, None
-    valor = float(m.group(1).replace(",", "."))
-    unidad = m.group(2).upper()
-    tipo = m.group(3).upper()
-    if unidad == "TB":
-        valor *= 1024
-    tipo_normalizado = "ssd" if "SSD" in tipo else "hdd" if "HDD" in tipo else "emmc" if "EMMC" in tipo.upper() else None
-    return valor, tipo_normalizado
+    m = PATRON_ALMACENAMIENTO_DESPUES.search(texto)
+    if m:
+        valor = float(m.group(1).replace(",", "."))
+        unidad = m.group(2).upper()
+        tipo = m.group(3).upper()
+        if unidad == "TB":
+            valor *= 1024
+        tipo_normalizado = "ssd" if "SSD" in tipo else "hdd" if "HDD" in tipo else "emmc"
+        return valor, tipo_normalizado
+
+    m = PATRON_ALMACENAMIENTO_ANTES.search(texto)
+    if m:
+        valor = float(m.group(2).replace(",", "."))
+        unidad = m.group(3).upper()
+        if unidad == "TB":
+            valor *= 1024
+        return valor, None  # etiqueta no dice si es SSD o HDD
+
+    return None, None
 
 
 def _limpiar_descriptor(linea: str) -> str:
@@ -111,17 +127,9 @@ async def _mejor_match(db: AsyncSession, tipo: str, lineas: list[str]):
     return mejor
 
 
-@router.post("/interpretar")
-async def interpretar(payload: TextoPegado, db: AsyncSession = Depends(get_db)):
-    """Recibe el texto crudo que el usuario pegó desde 'Acerca de este
-    equipo' (Windows/Mac) o 'Información del teléfono' (Android/iOS), y
-    devuelve lo que pudo reconocer. Es heurístico, no infalible — por eso
-    cada campo devuelve también si hubo coincidencia o no, para que el
-    frontend deje confirmar/corregir en vez de asumir que está bien."""
-    texto = payload.texto
-
+async def _interpretar_texto(texto: str, db: AsyncSession) -> dict:
     cpu_lineas = _lineas_candidatas(texto, ["processor", "procesador", "chip", "cpu"])
-    gpu_lineas = _lineas_candidatas(texto, ["graphics", "gráfic", "gpu", "video", "tarjeta"])
+    gpu_lineas = _lineas_candidatas(texto, ["graphics", "gráfic", "grafic", "gpu", "video", "tarjeta"])
 
     cpu_match = await _mejor_match(db, "cpu", cpu_lineas)
     gpu_match = await _mejor_match(db, "gpu", gpu_lineas)
@@ -136,3 +144,29 @@ async def interpretar(payload: TextoPegado, db: AsyncSession = Depends(get_db)):
         "tipo_almacenamiento": tipo_almacenamiento,
         "reconocido_algo": any([cpu_match, gpu_match, ram_gb, almacenamiento_gb]),
     }
+
+
+@router.post("/interpretar")
+async def interpretar(payload: TextoPegado, db: AsyncSession = Depends(get_db)):
+    """Recibe el texto crudo que el usuario pegó desde 'Acerca de este
+    equipo' (Windows/Mac) o 'Información del teléfono' (Android/iOS), y
+    devuelve lo que pudo reconocer. Es heurístico, no infalible — por eso
+    cada campo devuelve también si hubo coincidencia o no, para que el
+    frontend deje confirmar/corregir en vez de asumir que está bien."""
+    return await _interpretar_texto(payload.texto, db)
+
+
+@router.post("/interpretar-imagen")
+async def interpretar_imagen(archivo: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+    """Misma idea que /interpretar pero a partir de una captura de pantalla
+    (ej. la pantalla de resumen de Windows 11, que muestra GPU y
+    almacenamiento como tarjetas visuales que el botón 'Copiar' no incluye
+    en el texto). Usa OCR — es menos confiable que el texto pegado,
+    especialmente con layouts de columnas, así que el resultado siempre
+    hay que dejarlo confirmar, nunca darlo por hecho."""
+    contenido = await archivo.read()
+    imagen = Image.open(io.BytesIO(contenido))
+    texto_ocr = pytesseract.image_to_string(imagen, lang="spa+eng")
+    resultado = await _interpretar_texto(texto_ocr, db)
+    resultado["texto_reconocido"] = texto_ocr.strip()
+    return resultado
