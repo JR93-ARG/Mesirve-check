@@ -4,7 +4,7 @@ export async function detectarDispositivo() {
   const datos = {
     nucleos: navigator.hardwareConcurrency ?? null,
     ram_gb_aprox: navigator.deviceMemory ?? null, // truncado a 8 en Chrome/Edge, ausente en Safari
-    plataforma: navigator.platform ?? null,
+    plataforma: formatearPlataforma(navigator.platform, navigator.userAgent),
     touch: navigator.maxTouchPoints > 0,
     pantalla_ancho: window.screen.width,
     pantalla_alto: window.screen.height,
@@ -24,6 +24,16 @@ export async function detectarDispositivo() {
   }
 
   return datos;
+}
+
+function formatearPlataforma(platform, userAgent) {
+  const ua = userAgent || "";
+  if (/android/i.test(ua)) return "Android";
+  if (/iphone|ipad|ipod/i.test(ua)) return "iOS";
+  if (/win/i.test(platform)) return "Windows";
+  if (/mac/i.test(platform)) return "macOS";
+  if (/linux/i.test(platform)) return "Linux";
+  return platform || null;
 }
 
 function detectarGPU() {

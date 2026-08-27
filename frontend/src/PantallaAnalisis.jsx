@@ -24,18 +24,26 @@ const ETIQUETA_VEREDICTO = {
 export default function PantallaAnalisis() {
   const [detectado, setDetectado] = useState(null);
   const [confirmados, setConfirmados] = useState({});
-  const [perfiles, setPerfiles] = useState([]);
+  const [perfiles, setPerfiles] = useState(null);
   const [perfilId, setPerfilId] = useState(null);
   const [resultado, setResultado] = useState(null);
   const [cargando, setCargando] = useState(false);
+  const [errorPerfiles, setErrorPerfiles] = useState(false);
 
   const manejarDeteccion = useCallback((datos) => setDetectado(datos), []);
 
   useEffect(() => {
     fetch(`${API_URL}/api/perfiles`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then(setPerfiles)
-      .catch(() => setPerfiles([]));
+      .catch((e) => {
+        console.error("No se pudieron cargar los rubros:", e);
+        setErrorPerfiles(true);
+        setPerfiles([]);
+      });
   }, []);
 
   const faltantes = detectado ? camposFaltantes(detectado) : [];
@@ -114,8 +122,12 @@ export default function PantallaAnalisis() {
               <p className="font-mono text-xs text-[var(--color-text-muted)] tracking-wide">
                 para_qué_lo_vas_a_usar
               </p>
-              {perfiles.length === 0 ? (
+              {perfiles === null ? (
                 <p className="text-sm text-[var(--color-text-faint)]">Cargando rubros...</p>
+              ) : errorPerfiles ? (
+                <p className="text-sm" style={{ color: "var(--color-bad)" }}>
+                  No pudimos cargar los rubros. Revisá tu conexión y recargá la página.
+                </p>
               ) : (
                 <SelectorRubro perfiles={perfiles} seleccionado={perfilId} onSeleccionar={setPerfilId} />
               )}
