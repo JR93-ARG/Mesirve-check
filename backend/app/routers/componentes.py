@@ -1,6 +1,6 @@
 import re
 import io
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
@@ -166,7 +166,14 @@ async def interpretar_imagen(archivo: UploadFile = File(...), db: AsyncSession =
     hay que dejarlo confirmar, nunca darlo por hecho."""
     contenido = await archivo.read()
     imagen = Image.open(io.BytesIO(contenido))
-    texto_ocr = pytesseract.image_to_string(imagen, lang="spa+eng")
+    try:
+        texto_ocr = pytesseract.image_to_string(imagen, lang="spa+eng")
+    except pytesseract.TesseractNotFoundError:
+        raise HTTPException(
+            503,
+            "El motor de reconocimiento de imagen no está instalado en el servidor. "
+            "Probá pegando el texto en su lugar.",
+        )
     resultado = await _interpretar_texto(texto_ocr, db)
     resultado["texto_reconocido"] = texto_ocr.strip()
     return resultado
