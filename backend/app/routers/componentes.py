@@ -1,17 +1,22 @@
 import re
 import io
 import json
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Request
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from PIL import Image
 import pytesseract
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.database import get_db
 from app.estimador import estimar_cpu, estimar_gpu
 
 router = APIRouter(prefix="/api/componentes", tags=["componentes"])
+limiter = Limiter(key_func=get_remote_address)
+
+TAMANO_MAXIMO_IMAGEN = 8 * 1024 * 1024  # 8 MB — de sobra para una captura de pantalla
 
 
 @router.get("/buscar")
@@ -230,7 +235,8 @@ def _intentar_parsear_json(texto: str):
 
 
 @router.post("/interpretar")
-async def interpretar(payload: TextoPegado, db: AsyncSession = Depends(get_db)):
+@limiter.limit("20/minute")
+async def interpretar(request: Request, payload: TextoPegado, db: AsyncSession = Depends(get_db)):
     """Recibe el texto crudo que el usuario pegó desde 'Acerca de este
     equipo' (Windows/Mac) o 'Información del teléfono' (Android/iOS), y
     devuelve lo que pudo reconocer. Es heurístico, no infalible — por eso
@@ -240,15 +246,29 @@ async def interpretar(payload: TextoPegado, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/interpretar-imagen")
-async def interpretar_imagen(archivo: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+@limiter.limit("6/minute")
+async def interpretar_imagen(request: Request, archivo: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
     """Misma idea que /interpretar pero a partir de una captura de pantalla
     (ej. la pantalla de resumen de Windows 11, que muestra GPU y
     almacenamiento como tarjetas visuales que el botón 'Copiar' no incluye
     en el texto). Usa OCR — es menos confiable que el texto pegado,
     especialmente con layouts de columnas, así que el resultado siempre
-    hay que dejarlo confirmar, nunca darlo por hecho."""
+    hay que dejarlo confirmar, nunca darlo por hecho.
+
+    Límite de tamaño y de frecuencia: el OCR es pesado en CPU, así que sin
+    esto cualquiera podría tirar el servidor mandando imágenes gigantes
+    en bucle."""
     contenido = await archivo.read()
-    imagen = Image.open(io.BytesIO(contenido))
+    if len(contenido) > TAMANO_MAXIMO_IMAGEN:
+        raise HTTPException(413, "La imagen es demasiado pesada (máximo 8 MB).")
+
+    try:
+        imagen = Image.open(io.BytesIO(contenido))
+        imagen.verify()
+        imagen = Image.open(io.BytesIO(contenido))  # verify() deja la imagen inutilizable, se reabre
+    except Exception:
+        raise HTTPException(400, "El archivo no es una imagen válida.")
+
     try:
         texto_ocr = pytesseract.image_to_string(imagen, lang="spa+eng")
     except pytesseract.TesseractNotFoundError:

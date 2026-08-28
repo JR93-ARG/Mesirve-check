@@ -1,13 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 import json
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.database import get_db
 from app.schemas import SolicitudAnalisis, RespuestaAnalisis
 from app.recomendacion_so import evaluar_sistema_operativo
 
 router = APIRouter(prefix="/api/analisis", tags=["analisis"])
+limiter = Limiter(key_func=get_remote_address)
 
 VALOR_POR_COMPONENTE = {
     "cpu": lambda d: d.cpu_puntaje,
@@ -36,7 +39,8 @@ def calcular_puntaje_componente(valor, minimo, recomendado) -> float:
 
 
 @router.post("", response_model=RespuestaAnalisis)
-async def crear_analisis(solicitud: SolicitudAnalisis, db: AsyncSession = Depends(get_db)):
+@limiter.limit("30/minute")
+async def crear_analisis(request: Request, solicitud: SolicitudAnalisis, db: AsyncSession = Depends(get_db)):
     req_query = text("""
         SELECT componente, peso, umbral_minimo, umbral_recomendado
         FROM requisitos_perfil WHERE perfil_id = :perfil_id
@@ -153,9 +157,15 @@ async def crear_analisis(solicitud: SolicitudAnalisis, db: AsyncSession = Depend
 
 
 @router.get("/{analisis_id}")
-async def obtener_analisis(analisis_id: int, db: AsyncSession = Depends(get_db)):
-    query = text("SELECT * FROM analisis WHERE id = :id")
-    result = (await db.execute(query, {"id": analisis_id})).mappings().first()
+async def obtener_analisis(analisis_id: int, token: str, db: AsyncSession = Depends(get_db)):
+    """Antes esto se podía consultar solo con el ID numérico, que es
+    secuencial y fácil de adivinar (1, 2, 3...) — cualquiera podía ver
+    análisis de otras personas probando números. Ahora además hace falta
+    el token de sesión (un UUID random que ya se generaba, pero no se
+    exigía) — sin conocer el token exacto de ESE análisis, no se puede
+    acceder."""
+    query = text("SELECT * FROM analisis WHERE id = :id AND token_sesion = :token")
+    result = (await db.execute(query, {"id": analisis_id, "token": token})).mappings().first()
     if not result:
         raise HTTPException(404, "Análisis no encontrado")
     return result
