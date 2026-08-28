@@ -224,6 +224,16 @@ export default function PegarSpecs({ sistemaOperativo, onInterpretado }) {
               No pudimos reconocer nada de ese texto. Probá pegar el bloque completo, sin recortar.
             </p>
           )}
+          {resultado.texto_reconocido && (
+            <details className="pt-1">
+              <summary className="cursor-pointer text-[var(--color-text-faint)] select-none">
+                ver texto que leyó el OCR
+              </summary>
+              <pre className="mt-1.5 whitespace-pre-wrap text-[var(--color-text-faint)] bg-[var(--color-bg)] rounded p-2 max-h-40 overflow-auto">
+                {resultado.texto_reconocido}
+              </pre>
+            </details>
+          )}
         </div>
       )}
     </div>
