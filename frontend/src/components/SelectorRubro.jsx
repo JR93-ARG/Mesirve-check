@@ -1,6 +1,6 @@
 export default function SelectorRubro({ perfiles, seleccionado, onSeleccionar }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+    <div className="grid grid-cols-2 gap-2.5">
       {perfiles.map((p) => {
         const activo = seleccionado === p.id;
         return (

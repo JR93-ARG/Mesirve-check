@@ -103,7 +103,7 @@ export default function PantallaAnalisis() {
 
   return (
     <div className="min-h-screen">
-      <div className="max-w-xl lg:max-w-3xl mx-auto px-5 py-12 sm:py-16">
+      <div className="max-w-xl lg:max-w-4xl mx-auto px-5 py-12 sm:py-16">
         <header className="space-y-2 mb-10">
           <p className="font-mono text-xs text-[var(--color-accent)] tracking-widest uppercase">
             diagnóstico de hardware
@@ -122,48 +122,50 @@ export default function PantallaAnalisis() {
 
             {detectado && (
               <>
-                <section className="space-y-3">
-                  <BuscadorModelo onSeleccionar={(m) => actualizarCampo("modelo_equipo_id", m.id)} />
+                <div className="lg:grid lg:grid-cols-2 lg:gap-8 space-y-10 lg:space-y-0">
+                  <section className="space-y-3">
+                    <BuscadorModelo onSeleccionar={(m) => actualizarCampo("modelo_equipo_id", m.id)} />
 
-                  <PegarSpecs
-                    sistemaOperativo={detectado.plataforma}
-                    onInterpretado={(data) => {
-                      if (data.cpu) actualizarCampo("cpu_puntaje", data.cpu.puntaje_relativo);
-                      if (data.gpu) actualizarCampo("gpu_puntaje", data.gpu.puntaje_relativo);
-                      if (data.ram_gb) actualizarCampo("ram_gb", data.ram_gb);
-                      if (data.almacenamiento_gb) actualizarCampo("almacenamiento_gb", data.almacenamiento_gb);
-                      if (data.tipo_almacenamiento) actualizarCampo("tipo_almacenamiento", data.tipo_almacenamiento);
-                    }}
-                  />
+                    <PegarSpecs
+                      sistemaOperativo={detectado.plataforma}
+                      onInterpretado={(data) => {
+                        if (data.cpu) actualizarCampo("cpu_puntaje", data.cpu.puntaje_relativo);
+                        if (data.gpu) actualizarCampo("gpu_puntaje", data.gpu.puntaje_relativo);
+                        if (data.ram_gb) actualizarCampo("ram_gb", data.ram_gb);
+                        if (data.almacenamiento_gb) actualizarCampo("almacenamiento_gb", data.almacenamiento_gb);
+                        if (data.tipo_almacenamiento) actualizarCampo("tipo_almacenamiento", data.tipo_almacenamiento);
+                      }}
+                    />
 
-                  {faltantes.includes("ram") && (
-                    <div>
-                      <label className="block font-mono text-xs text-[var(--color-text-muted)] mb-1.5 tracking-wide">
-                        ram_real_gb
-                      </label>
-                      <input
-                        type="number"
-                        onChange={(e) => actualizarCampo("ram_gb", Number(e.target.value))}
-                        className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-2.5 text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
-                      />
-                    </div>
-                  )}
-                </section>
+                    {faltantes.includes("ram") && (
+                      <div>
+                        <label className="block font-mono text-xs text-[var(--color-text-muted)] mb-1.5 tracking-wide">
+                          ram_real_gb
+                        </label>
+                        <input
+                          type="number"
+                          onChange={(e) => actualizarCampo("ram_gb", Number(e.target.value))}
+                          className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-2.5 text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+                        />
+                      </div>
+                    )}
+                  </section>
 
-                <section className="space-y-3">
-                  <p className="font-mono text-xs text-[var(--color-text-muted)] tracking-wide">
-                    para_qué_lo_vas_a_usar
-                  </p>
-                  {perfiles === null ? (
-                    <p className="text-sm text-[var(--color-text-faint)]">Cargando rubros...</p>
-                  ) : errorPerfiles ? (
-                    <p className="text-sm" style={{ color: "var(--color-bad)" }}>
-                      No pudimos cargar los rubros. Revisá tu conexión y recargá la página.
+                  <section className="space-y-3">
+                    <p className="font-mono text-xs text-[var(--color-text-muted)] tracking-wide">
+                      para_qué_lo_vas_a_usar
                     </p>
-                  ) : (
-                    <SelectorRubro perfiles={perfiles} seleccionado={perfilId} onSeleccionar={setPerfilId} />
-                  )}
-                </section>
+                    {perfiles === null ? (
+                      <p className="text-sm text-[var(--color-text-faint)]">Cargando rubros...</p>
+                    ) : errorPerfiles ? (
+                      <p className="text-sm" style={{ color: "var(--color-bad)" }}>
+                        No pudimos cargar los rubros. Revisá tu conexión y recargá la página.
+                      </p>
+                    ) : (
+                      <SelectorRubro perfiles={perfiles} seleccionado={perfilId} onSeleccionar={setPerfilId} />
+                    )}
+                  </section>
+                </div>
 
                 <button
                   onClick={analizar}
