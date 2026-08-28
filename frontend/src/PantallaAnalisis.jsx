@@ -235,6 +235,32 @@ export default function PantallaAnalisis() {
             </div>
           </section>
         )}
+
+        {resultado?.recomendacion_so && resultado.recomendacion_so.nivel !== "sin_datos" && (
+          <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 space-y-3">
+            <p className="font-mono text-xs text-[var(--color-text-muted)] tracking-wide">
+              sistema_operativo_recomendado
+            </p>
+            <p className="font-display text-lg font-semibold text-[var(--color-text)]">
+              {resultado.recomendacion_so.etiqueta}
+            </p>
+            <div className="space-y-3">
+              {resultado.recomendacion_so.opciones.map((op, i) => (
+                <div key={i}>
+                  <p className="text-sm font-medium" style={{ color: "var(--color-accent)" }}>{op.sistema}</p>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5 leading-relaxed">{op.motivo}</p>
+                </div>
+              ))}
+            </div>
+            {resultado.recomendacion_so.notas.length > 0 && (
+              <div className="pt-2 border-t border-[var(--color-border)] space-y-1">
+                {resultado.recomendacion_so.notas.map((nota, i) => (
+                  <p key={i} className="text-xs text-[var(--color-text-faint)] leading-relaxed">{nota}</p>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
       </div>
     </div>
   );

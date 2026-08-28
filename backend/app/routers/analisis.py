@@ -5,6 +5,7 @@ import json
 
 from app.database import get_db
 from app.schemas import SolicitudAnalisis, RespuestaAnalisis
+from app.recomendacion_so import evaluar_sistema_operativo
 
 router = APIRouter(prefix="/api/analisis", tags=["analisis"])
 
@@ -111,12 +112,19 @@ async def crear_analisis(solicitud: SolicitudAnalisis, db: AsyncSession = Depend
     })).mappings().first()
     await db.commit()
 
+    recomendacion_so = evaluar_sistema_operativo(
+        solicitud.datos_confirmados.ram_gb,
+        solicitud.datos_confirmados.tipo_almacenamiento,
+        solicitud.datos_confirmados.cpu_puntaje,
+    )
+
     return {
         "id": row["id"],
         "token": row["token_sesion"],
         "score": round(score_final, 1),
         "veredicto": veredicto,
         "desglose": desglose,
+        "recomendacion_so": recomendacion_so,
     }
 
 

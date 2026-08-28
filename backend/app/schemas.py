@@ -36,6 +36,7 @@ class RespuestaAnalisis(BaseModel):
     score: float
     veredicto: str
     desglose: list[ItemDesglose]
+    recomendacion_so: Optional[dict] = None
 
 
 class PerfilUso(BaseModel):
