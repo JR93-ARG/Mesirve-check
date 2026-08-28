@@ -18,6 +18,7 @@ class SolicitudAnalisis(BaseModel):
     datos_detectados: dict
     datos_confirmados: DatosEquipo
     modelo_equipo_id: Optional[int] = None
+    programa_ids: list[int] = []
 
 
 class ItemDesglose(BaseModel):
@@ -44,6 +45,7 @@ class PerfilUso(BaseModel):
     nombre: str
     descripcion: Optional[str]
     icono: Optional[str]
+    categoria: Optional[str] = None
 
     class Config:
         from_attributes = True

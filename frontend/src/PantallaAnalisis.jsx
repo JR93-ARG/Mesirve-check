@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { camposFaltantes } from "./deteccion";
 import PanelEscaneo from "./components/PanelEscaneo";
-import SelectorRubro from "./components/SelectorRubro";
+import SelectorUso from "./components/SelectorUso";
 import BuscadorModelo from "./components/BuscadorModelo";
 import PegarSpecs from "./components/PegarSpecs";
 import MedidorBarras from "./components/MedidorBarras";
@@ -26,28 +26,17 @@ const ETIQUETA_VEREDICTO = {
 export default function PantallaAnalisis() {
   const [detectado, setDetectado] = useState(null);
   const [confirmados, setConfirmados] = useState({});
-  const [perfiles, setPerfiles] = useState(null);
   const [perfilId, setPerfilId] = useState(null);
+  const [programaIds, setProgramaIds] = useState([]);
   const [resultado, setResultado] = useState(null);
   const [recomendaciones, setRecomendaciones] = useState(null);
   const [cargando, setCargando] = useState(false);
-  const [errorPerfiles, setErrorPerfiles] = useState(false);
   const [errorAnalisis, setErrorAnalisis] = useState(null);
 
   const manejarDeteccion = useCallback((datos) => setDetectado(datos), []);
-
-  useEffect(() => {
-    fetch(`${API_URL}/api/perfiles`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
-      .then(setPerfiles)
-      .catch((e) => {
-        console.error("No se pudieron cargar los rubros:", e);
-        setErrorPerfiles(true);
-        setPerfiles([]);
-      });
+  const manejarCambioUso = useCallback(({ perfilId: id, programaIds: progs }) => {
+    setPerfilId(id);
+    setProgramaIds(progs);
   }, []);
 
   const faltantes = detectado ? camposFaltantes(detectado) : [];
@@ -79,6 +68,7 @@ export default function PantallaAnalisis() {
           conexion_mbps: confirmados.conexion_mbps ?? detectado.conexion_mbps,
         },
         modelo_equipo_id: confirmados.modelo_equipo_id ?? null,
+        programa_ids: programaIds,
       };
       const res = await fetch(`${API_URL}/api/analisis`, {
         method: "POST",
@@ -168,15 +158,7 @@ export default function PantallaAnalisis() {
                       <span className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-mono font-medium shrink-0" style={{ background: "var(--color-accent-soft)", color: "var(--color-accent)" }}>2</span>
                       <p className="font-display text-sm font-medium text-[var(--color-text)]">¿Para qué lo vas a usar?</p>
                     </div>
-                    {perfiles === null ? (
-                      <p className="text-sm text-[var(--color-text-faint)]">Cargando rubros...</p>
-                    ) : errorPerfiles ? (
-                      <p className="text-sm" style={{ color: "var(--color-bad)" }}>
-                        No pudimos cargar los rubros. Revisá tu conexión y recargá la página.
-                      </p>
-                    ) : (
-                      <SelectorRubro perfiles={perfiles} seleccionado={perfilId} onSeleccionar={setPerfilId} />
-                    )}
+                    <SelectorUso onCambio={manejarCambioUso} />
                   </section>
                 </div>
 

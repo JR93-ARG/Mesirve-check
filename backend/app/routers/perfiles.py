@@ -9,10 +9,26 @@ router = APIRouter(prefix="/api/perfiles", tags=["perfiles"])
 
 
 @router.get("", response_model=list[PerfilUso])
-async def listar_perfiles(db: AsyncSession = Depends(get_db)):
-    """Perfiles de uso disponibles, para poblar el selector de rubro."""
-    query = text("SELECT id, nombre, descripcion, icono FROM perfiles_uso ORDER BY nombre")
-    result = await db.execute(query)
+async def listar_perfiles(categoria: str = None, db: AsyncSession = Depends(get_db)):
+    """Perfiles de uso disponibles. Si se pasa `categoria`
+    (trabajo/estudio/ocio/juegos), filtra solo los de esa categoría —
+    para el flujo de selección en dos pasos (categoría → rubro puntual)."""
+    if categoria:
+        query = text("SELECT id, nombre, descripcion, icono, categoria FROM perfiles_uso WHERE categoria = :categoria ORDER BY nombre")
+        result = await db.execute(query, {"categoria": categoria})
+    else:
+        query = text("SELECT id, nombre, descripcion, icono, categoria FROM perfiles_uso ORDER BY nombre")
+        result = await db.execute(query)
+    return result.mappings().all()
+
+
+@router.get("/{perfil_id}/programas")
+async def programas_de_perfil(perfil_id: int, db: AsyncSession = Depends(get_db)):
+    """Checklist de programas puntuales para este rubro, si los hay. Elegir
+    programas específicos afina la evaluación — un rubro de 'Diseño
+    gráfico' con Photoshop tildado exige más RAM/GPU que el genérico."""
+    query = text("SELECT id, nombre FROM programas WHERE perfil_id = :perfil_id ORDER BY nombre")
+    result = await db.execute(query, {"perfil_id": perfil_id})
     return result.mappings().all()
 
 

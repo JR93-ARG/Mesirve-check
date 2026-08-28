@@ -41,15 +41,39 @@ async def crear_analisis(solicitud: SolicitudAnalisis, db: AsyncSession = Depend
         SELECT componente, peso, umbral_minimo, umbral_recomendado
         FROM requisitos_perfil WHERE perfil_id = :perfil_id
     """)
-    requisitos = (await db.execute(req_query, {"perfil_id": solicitud.perfil_id})).mappings().all()
+    requisitos = {r["componente"]: dict(r) for r in (await db.execute(req_query, {"perfil_id": solicitud.perfil_id})).mappings().all()}
     if not requisitos:
         raise HTTPException(404, "Perfil de uso no encontrado o sin requisitos cargados")
+
+    # Si eligieron programas puntuales, usamos el umbral MÁS EXIGENTE entre
+    # el genérico del rubro y el de cada programa tildado — un "Diseño
+    # gráfico" con Photoshop pide más RAM/GPU que el genérico solo.
+    if solicitud.programa_ids:
+        prog_query = text("""
+            SELECT componente, umbral_minimo, umbral_recomendado
+            FROM requisitos_programa WHERE programa_id = ANY(:ids)
+        """)
+        filas_programa = (await db.execute(prog_query, {"ids": solicitud.programa_ids})).mappings().all()
+        for fila in filas_programa:
+            comp = fila["componente"]
+            if comp not in requisitos:
+                continue  # el rubro no pondera ese componente, se ignora
+            if fila["umbral_recomendado"] is not None and (
+                requisitos[comp]["umbral_recomendado"] is None
+                or fila["umbral_recomendado"] > requisitos[comp]["umbral_recomendado"]
+            ):
+                requisitos[comp]["umbral_recomendado"] = fila["umbral_recomendado"]
+            if fila["umbral_minimo"] is not None and (
+                requisitos[comp]["umbral_minimo"] is None
+                or fila["umbral_minimo"] > requisitos[comp]["umbral_minimo"]
+            ):
+                requisitos[comp]["umbral_minimo"] = fila["umbral_minimo"]
 
     desglose = []
     score_total = 0.0
     peso_total = 0.0
 
-    for req in requisitos:
+    for req in requisitos.values():
         extractor = VALOR_POR_COMPONENTE.get(req["componente"])
         valor = extractor(solicitud.datos_confirmados) if extractor else None
 
