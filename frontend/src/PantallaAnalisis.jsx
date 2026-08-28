@@ -103,7 +103,7 @@ export default function PantallaAnalisis() {
 
   return (
     <div className="min-h-screen">
-      <div className="max-w-xl lg:max-w-6xl mx-auto px-5 py-12 sm:py-16">
+      <div className="max-w-xl lg:max-w-3xl mx-auto px-5 py-12 sm:py-16">
         <header className="space-y-2 mb-10">
           <p className="font-mono text-xs text-[var(--color-accent)] tracking-widest uppercase">
             diagnóstico de hardware
@@ -117,8 +117,7 @@ export default function PantallaAnalisis() {
           </p>
         </header>
 
-        <div className="lg:grid lg:grid-cols-[minmax(380px,440px)_1fr] lg:gap-10 lg:items-start">
-          <div className="space-y-10">
+        <div className="space-y-10">
             <PanelEscaneo onCompletado={manejarDeteccion} />
 
             {detectado && (
@@ -184,19 +183,6 @@ export default function PantallaAnalisis() {
                   </p>
                 )}
               </>
-            )}
-          </div>
-
-          <div className="space-y-8 mt-10 lg:mt-0">
-            {!resultado && (
-              <div className="hidden lg:flex flex-col items-center justify-center text-center rounded-2xl border border-dashed border-[var(--color-border)] p-16 h-full min-h-[420px]">
-                <p className="font-mono text-xs text-[var(--color-text-faint)] tracking-wide">
-                  esperando_análisis
-                </p>
-                <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xs">
-                  Completá los datos a la izquierda y el resultado va a aparecer acá.
-                </p>
-              </div>
             )}
 
             {resultado && Array.isArray(resultado.desglose) && (
@@ -308,7 +294,6 @@ export default function PantallaAnalisis() {
                 )}
               </section>
             )}
-          </div>
         </div>
       </div>
     </div>
