@@ -25,8 +25,9 @@ class ItemDesglose(BaseModel):
     valor_detectado: Optional[float]
     umbral_minimo: Optional[float]
     umbral_recomendado: Optional[float]
-    puntaje: float
+    puntaje: Optional[float] = None
     peso: float
+    sin_datos: bool = False
 
 
 class RespuestaAnalisis(BaseModel):
