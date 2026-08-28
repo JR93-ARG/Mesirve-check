@@ -62,3 +62,47 @@ html {
 .linea-escaneo {
   animation: escaneo 2.6s ease-in-out infinite;
 }
+
+/* Fondo animado — dos manchas de luz que respiran lento, como el glow de
+   un panel de diagnóstico, más una grilla técnica sutil de fondo. */
+@keyframes flotar-a {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(7%, 9%) scale(1.15); }
+}
+@keyframes flotar-b {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-9%, -7%) scale(1.12); }
+}
+
+.fondo-mancha {
+  position: absolute;
+  width: 55vmax;
+  height: 55vmax;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.14;
+  will-change: transform;
+}
+.fondo-mancha-a {
+  background: var(--color-accent);
+  top: -18%;
+  left: -12%;
+  animation: flotar-a 28s ease-in-out infinite;
+}
+.fondo-mancha-b {
+  background: var(--color-accent-dim);
+  bottom: -22%;
+  right: -12%;
+  animation: flotar-b 34s ease-in-out infinite;
+}
+.fondo-grilla {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--color-border) 55%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--color-border) 55%, transparent) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse at 50% 0%, black 0%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 0%, black 0%, transparent 70%);
+  opacity: 0.5;
+}

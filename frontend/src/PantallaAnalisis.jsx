@@ -102,197 +102,214 @@ export default function PantallaAnalisis() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)]">
-      <div className="max-w-xl mx-auto px-5 py-12 sm:py-16 space-y-10">
-        <header className="space-y-2">
+    <div className="min-h-screen">
+      <div className="max-w-xl lg:max-w-6xl mx-auto px-5 py-12 sm:py-16">
+        <header className="space-y-2 mb-10">
           <p className="font-mono text-xs text-[var(--color-accent)] tracking-widest uppercase">
             diagnóstico de hardware
           </p>
           <h1 className="font-display text-3xl sm:text-4xl font-semibold text-[var(--color-text)] leading-tight">
             ¿Le sirve este equipo?
           </h1>
-          <p className="text-[var(--color-text-muted)] text-sm leading-relaxed">
+          <p className="text-[var(--color-text-muted)] text-sm leading-relaxed max-w-xl">
             Leemos lo que tu navegador puede mostrar en vivo. Confirmá lo que falta y te decimos
             si el equipo rinde para lo que lo vas a usar.
           </p>
         </header>
 
-        <PanelEscaneo onCompletado={manejarDeteccion} />
+        <div className="lg:grid lg:grid-cols-[minmax(380px,440px)_1fr] lg:gap-10 lg:items-start">
+          <div className="space-y-10">
+            <PanelEscaneo onCompletado={manejarDeteccion} />
 
-        {detectado && (
-          <>
-            <section className="space-y-3">
-              <BuscadorModelo onSeleccionar={(m) => actualizarCampo("modelo_equipo_id", m.id)} />
+            {detectado && (
+              <>
+                <section className="space-y-3">
+                  <BuscadorModelo onSeleccionar={(m) => actualizarCampo("modelo_equipo_id", m.id)} />
 
-              <PegarSpecs
-                sistemaOperativo={detectado.plataforma}
-                onInterpretado={(data) => {
-                  if (data.cpu) actualizarCampo("cpu_puntaje", data.cpu.puntaje_relativo);
-                  if (data.gpu) actualizarCampo("gpu_puntaje", data.gpu.puntaje_relativo);
-                  if (data.ram_gb) actualizarCampo("ram_gb", data.ram_gb);
-                  if (data.almacenamiento_gb) actualizarCampo("almacenamiento_gb", data.almacenamiento_gb);
-                  if (data.tipo_almacenamiento) actualizarCampo("tipo_almacenamiento", data.tipo_almacenamiento);
-                }}
-              />
-
-              {faltantes.includes("ram") && (
-                <div>
-                  <label className="block font-mono text-xs text-[var(--color-text-muted)] mb-1.5 tracking-wide">
-                    ram_real_gb
-                  </label>
-                  <input
-                    type="number"
-                    onChange={(e) => actualizarCampo("ram_gb", Number(e.target.value))}
-                    className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-2.5 text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+                  <PegarSpecs
+                    sistemaOperativo={detectado.plataforma}
+                    onInterpretado={(data) => {
+                      if (data.cpu) actualizarCampo("cpu_puntaje", data.cpu.puntaje_relativo);
+                      if (data.gpu) actualizarCampo("gpu_puntaje", data.gpu.puntaje_relativo);
+                      if (data.ram_gb) actualizarCampo("ram_gb", data.ram_gb);
+                      if (data.almacenamiento_gb) actualizarCampo("almacenamiento_gb", data.almacenamiento_gb);
+                      if (data.tipo_almacenamiento) actualizarCampo("tipo_almacenamiento", data.tipo_almacenamiento);
+                    }}
                   />
-                </div>
-              )}
-            </section>
 
-            <section className="space-y-3">
-              <p className="font-mono text-xs text-[var(--color-text-muted)] tracking-wide">
-                para_qué_lo_vas_a_usar
-              </p>
-              {perfiles === null ? (
-                <p className="text-sm text-[var(--color-text-faint)]">Cargando rubros...</p>
-              ) : errorPerfiles ? (
-                <p className="text-sm" style={{ color: "var(--color-bad)" }}>
-                  No pudimos cargar los rubros. Revisá tu conexión y recargá la página.
-                </p>
-              ) : (
-                <SelectorRubro perfiles={perfiles} seleccionado={perfilId} onSeleccionar={setPerfilId} />
-              )}
-            </section>
-
-            <button
-              onClick={analizar}
-              disabled={!perfilId || cargando}
-              className="w-full rounded-xl py-3 text-sm font-display font-medium tracking-wide transition-colors disabled:cursor-not-allowed"
-              style={{
-                background: !perfilId || cargando ? "var(--color-surface-2)" : "var(--color-accent)",
-                color: !perfilId || cargando ? "var(--color-text-faint)" : "#0c1210",
-              }}
-            >
-              {cargando ? "Analizando..." : "Analizar equipo"}
-            </button>
-
-            {errorAnalisis && (
-              <p className="text-sm text-center" style={{ color: "var(--color-bad)" }}>
-                {errorAnalisis}
-              </p>
-            )}
-          </>
-        )}
-
-        {resultado && Array.isArray(resultado.desglose) && (
-          <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-mono text-xs text-[var(--color-text-muted)] tracking-wide mb-1">
-                  veredicto
-                </p>
-                <p className="font-display text-xl font-semibold text-[var(--color-text)]">
-                  {ETIQUETA_VEREDICTO[resultado.veredicto] ?? resultado.veredicto}
-                </p>
-              </div>
-              <p className="font-mono text-3xl font-medium text-[var(--color-text)]">
-                {Math.round(resultado.score)}
-                <span className="text-base text-[var(--color-text-faint)]">/100</span>
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              {resultado.desglose.map((d) => {
-                const recomendacion = recomendaciones?.find((r) => r.componente === d.componente);
-                const mostrarSugerencia = recomendacion?.sugerencia && !d.sin_datos && d.puntaje < 75;
-                return (
-                  <div key={d.componente} className="space-y-1">
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm text-[var(--color-text-muted)] w-32 shrink-0">
-                        {ETIQUETA_COMPONENTE[d.componente] ?? d.componente}
-                      </span>
-                      {d.sin_datos ? (
-                        <span className="text-xs font-mono text-[var(--color-text-faint)]">
-                          sin datos — no cuenta en el promedio
-                        </span>
-                      ) : (
-                        <>
-                          <MedidorBarras puntaje={d.puntaje} segmentos={12} contenedorAlto="h-6" />
-                          <span className="font-mono text-xs text-[var(--color-text-faint)] ml-auto">
-                            {Math.round(d.puntaje)}
-                          </span>
-                        </>
-                      )}
+                  {faltantes.includes("ram") && (
+                    <div>
+                      <label className="block font-mono text-xs text-[var(--color-text-muted)] mb-1.5 tracking-wide">
+                        ram_real_gb
+                      </label>
+                      <input
+                        type="number"
+                        onChange={(e) => actualizarCampo("ram_gb", Number(e.target.value))}
+                        className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-2.5 text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+                      />
                     </div>
-                    {mostrarSugerencia && (
-                      <p className="text-xs text-[var(--color-text-faint)] pl-[8.5rem]">
-                        para este uso, con <span className="text-[var(--color-accent)]">{recomendacion.sugerencia}</span> ya alcanza
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
+                  )}
+                </section>
 
-        {resultado?.recomendacion_so && resultado.recomendacion_so.nivel !== "sin_datos" && (
-          <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 space-y-3">
-            <p className="font-mono text-xs text-[var(--color-text-muted)] tracking-wide">
-              sistema_operativo_recomendado
-            </p>
-            <p className="font-display text-lg font-semibold text-[var(--color-text)]">
-              {resultado.recomendacion_so.etiqueta}
-            </p>
-            <div className="space-y-3">
-              {resultado.recomendacion_so.opciones.map((op, i) => (
-                <div key={i}>
-                  <p className="text-sm font-medium" style={{ color: "var(--color-accent)" }}>{op.sistema}</p>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5 leading-relaxed">{op.motivo}</p>
-                </div>
-              ))}
-            </div>
-            {resultado.recomendacion_so.notas.length > 0 && (
-              <div className="pt-2 border-t border-[var(--color-border)] space-y-1">
-                {resultado.recomendacion_so.notas.map((nota, i) => (
-                  <p key={i} className="text-xs text-[var(--color-text-faint)] leading-relaxed">{nota}</p>
-                ))}
-              </div>
+                <section className="space-y-3">
+                  <p className="font-mono text-xs text-[var(--color-text-muted)] tracking-wide">
+                    para_qué_lo_vas_a_usar
+                  </p>
+                  {perfiles === null ? (
+                    <p className="text-sm text-[var(--color-text-faint)]">Cargando rubros...</p>
+                  ) : errorPerfiles ? (
+                    <p className="text-sm" style={{ color: "var(--color-bad)" }}>
+                      No pudimos cargar los rubros. Revisá tu conexión y recargá la página.
+                    </p>
+                  ) : (
+                    <SelectorRubro perfiles={perfiles} seleccionado={perfilId} onSeleccionar={setPerfilId} />
+                  )}
+                </section>
+
+                <button
+                  onClick={analizar}
+                  disabled={!perfilId || cargando}
+                  className="w-full rounded-xl py-3 text-sm font-display font-medium tracking-wide transition-colors disabled:cursor-not-allowed"
+                  style={{
+                    background: !perfilId || cargando ? "var(--color-surface-2)" : "var(--color-accent)",
+                    color: !perfilId || cargando ? "var(--color-text-faint)" : "#0c1210",
+                  }}
+                >
+                  {cargando ? "Analizando..." : "Analizar equipo"}
+                </button>
+
+                {errorAnalisis && (
+                  <p className="text-sm text-center" style={{ color: "var(--color-bad)" }}>
+                    {errorAnalisis}
+                  </p>
+                )}
+              </>
             )}
+          </div>
 
-            {resultado.recomendacion_so.programas_compatibles && (
-              <div className="pt-2 border-t border-[var(--color-border)]">
-                <p className="font-mono text-xs text-[var(--color-text-muted)] tracking-wide mb-1.5">qué_puede_correr</p>
-                <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">
-                  {resultado.recomendacion_so.programas_compatibles}
+          <div className="space-y-8 mt-10 lg:mt-0">
+            {!resultado && (
+              <div className="hidden lg:flex flex-col items-center justify-center text-center rounded-2xl border border-dashed border-[var(--color-border)] p-16 h-full min-h-[420px]">
+                <p className="font-mono text-xs text-[var(--color-text-faint)] tracking-wide">
+                  esperando_análisis
+                </p>
+                <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xs">
+                  Completá los datos a la izquierda y el resultado va a aparecer acá.
                 </p>
               </div>
             )}
 
-            {resultado.recomendacion_so.navegadores?.length > 0 && (
-              <div className="pt-2 border-t border-[var(--color-border)]">
-                <p className="font-mono text-xs text-[var(--color-text-muted)] tracking-wide mb-1.5">navegador_recomendado</p>
-                {resultado.recomendacion_so.navegadores.map((nav, i) => (
-                  <p key={i} className="text-xs">
-                    <span style={{ color: "var(--color-accent)" }}>{nav.nombre}</span>
-                    <span className="text-[var(--color-text-faint)]"> — {nav.motivo}</span>
+            {resultado && Array.isArray(resultado.desglose) && (
+              <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-mono text-xs text-[var(--color-text-muted)] tracking-wide mb-1">
+                      veredicto
+                    </p>
+                    <p className="font-display text-xl font-semibold text-[var(--color-text)]">
+                      {ETIQUETA_VEREDICTO[resultado.veredicto] ?? resultado.veredicto}
+                    </p>
+                  </div>
+                  <p className="font-mono text-3xl font-medium text-[var(--color-text)]">
+                    {Math.round(resultado.score)}
+                    <span className="text-base text-[var(--color-text-faint)]">/100</span>
                   </p>
-                ))}
-              </div>
+                </div>
+
+                <div className="space-y-4">
+                  {resultado.desglose.map((d) => {
+                    const recomendacion = recomendaciones?.find((r) => r.componente === d.componente);
+                    const mostrarSugerencia = recomendacion?.sugerencia && !d.sin_datos && d.puntaje < 75;
+                    return (
+                      <div key={d.componente} className="space-y-1">
+                        <div className="flex items-center gap-4">
+                          <span className="text-sm text-[var(--color-text-muted)] w-32 shrink-0">
+                            {ETIQUETA_COMPONENTE[d.componente] ?? d.componente}
+                          </span>
+                          {d.sin_datos ? (
+                            <span className="text-xs font-mono text-[var(--color-text-faint)]">
+                              sin datos — no cuenta en el promedio
+                            </span>
+                          ) : (
+                            <>
+                              <MedidorBarras puntaje={d.puntaje} segmentos={12} contenedorAlto="h-6" />
+                              <span className="font-mono text-xs text-[var(--color-text-faint)] ml-auto">
+                                {Math.round(d.puntaje)}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        {mostrarSugerencia && (
+                          <p className="text-xs text-[var(--color-text-faint)] pl-[8.5rem]">
+                            para este uso, con <span className="text-[var(--color-accent)]">{recomendacion.sugerencia}</span> ya alcanza
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
             )}
 
-            {resultado.recomendacion_so.optimizaciones?.length > 0 && (
-              <div className="pt-2 border-t border-[var(--color-border)]">
-                <p className="font-mono text-xs text-[var(--color-text-muted)] tracking-wide mb-1.5">optimizaciones_sugeridas</p>
-                <ul className="space-y-1">
-                  {resultado.recomendacion_so.optimizaciones.map((opt, i) => (
-                    <li key={i} className="text-xs text-[var(--color-text-muted)] leading-relaxed">• {opt}</li>
+            {resultado?.recomendacion_so && resultado.recomendacion_so.nivel !== "sin_datos" && (
+              <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 space-y-3">
+                <p className="font-mono text-xs text-[var(--color-text-muted)] tracking-wide">
+                  sistema_operativo_recomendado
+                </p>
+                <p className="font-display text-lg font-semibold text-[var(--color-text)]">
+                  {resultado.recomendacion_so.etiqueta}
+                </p>
+                <div className="space-y-3">
+                  {resultado.recomendacion_so.opciones.map((op, i) => (
+                    <div key={i}>
+                      <p className="text-sm font-medium" style={{ color: "var(--color-accent)" }}>{op.sistema}</p>
+                      <p className="text-xs text-[var(--color-text-muted)] mt-0.5 leading-relaxed">{op.motivo}</p>
+                    </div>
                   ))}
-                </ul>
-              </div>
+                </div>
+                {resultado.recomendacion_so.notas.length > 0 && (
+                  <div className="pt-2 border-t border-[var(--color-border)] space-y-1">
+                    {resultado.recomendacion_so.notas.map((nota, i) => (
+                      <p key={i} className="text-xs text-[var(--color-text-faint)] leading-relaxed">{nota}</p>
+                    ))}
+                  </div>
+                )}
+
+                {resultado.recomendacion_so.programas_compatibles && (
+                  <div className="pt-2 border-t border-[var(--color-border)]">
+                    <p className="font-mono text-xs text-[var(--color-text-muted)] tracking-wide mb-1.5">qué_puede_correr</p>
+                    <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">
+                      {resultado.recomendacion_so.programas_compatibles}
+                    </p>
+                  </div>
+                )}
+
+                {resultado.recomendacion_so.navegadores?.length > 0 && (
+                  <div className="pt-2 border-t border-[var(--color-border)]">
+                    <p className="font-mono text-xs text-[var(--color-text-muted)] tracking-wide mb-1.5">navegador_recomendado</p>
+                    {resultado.recomendacion_so.navegadores.map((nav, i) => (
+                      <p key={i} className="text-xs">
+                        <span style={{ color: "var(--color-accent)" }}>{nav.nombre}</span>
+                        <span className="text-[var(--color-text-faint)]"> — {nav.motivo}</span>
+                      </p>
+                    ))}
+                  </div>
+                )}
+
+                {resultado.recomendacion_so.optimizaciones?.length > 0 && (
+                  <div className="pt-2 border-t border-[var(--color-border)]">
+                    <p className="font-mono text-xs text-[var(--color-text-muted)] tracking-wide mb-1.5">optimizaciones_sugeridas</p>
+                    <ul className="space-y-1">
+                      {resultado.recomendacion_so.optimizaciones.map((opt, i) => (
+                        <li key={i} className="text-xs text-[var(--color-text-muted)] leading-relaxed">• {opt}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </section>
             )}
-          </section>
-        )}
+          </div>
+        </div>
       </div>
     </div>
   );
