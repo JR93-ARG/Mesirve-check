@@ -259,6 +259,38 @@ export default function PantallaAnalisis() {
                 ))}
               </div>
             )}
+
+            {resultado.recomendacion_so.programas_compatibles && (
+              <div className="pt-2 border-t border-[var(--color-border)]">
+                <p className="font-mono text-xs text-[var(--color-text-muted)] tracking-wide mb-1.5">qué_puede_correr</p>
+                <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">
+                  {resultado.recomendacion_so.programas_compatibles}
+                </p>
+              </div>
+            )}
+
+            {resultado.recomendacion_so.navegadores?.length > 0 && (
+              <div className="pt-2 border-t border-[var(--color-border)]">
+                <p className="font-mono text-xs text-[var(--color-text-muted)] tracking-wide mb-1.5">navegador_recomendado</p>
+                {resultado.recomendacion_so.navegadores.map((nav, i) => (
+                  <p key={i} className="text-xs">
+                    <span style={{ color: "var(--color-accent)" }}>{nav.nombre}</span>
+                    <span className="text-[var(--color-text-faint)]"> — {nav.motivo}</span>
+                  </p>
+                ))}
+              </div>
+            )}
+
+            {resultado.recomendacion_so.optimizaciones?.length > 0 && (
+              <div className="pt-2 border-t border-[var(--color-border)]">
+                <p className="font-mono text-xs text-[var(--color-text-muted)] tracking-wide mb-1.5">optimizaciones_sugeridas</p>
+                <ul className="space-y-1">
+                  {resultado.recomendacion_so.optimizaciones.map((opt, i) => (
+                    <li key={i} className="text-xs text-[var(--color-text-muted)] leading-relaxed">• {opt}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </section>
         )}
       </div>
