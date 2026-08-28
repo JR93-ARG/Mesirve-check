@@ -5,6 +5,7 @@ import SelectorRubro from "./components/SelectorRubro";
 import BuscadorModelo from "./components/BuscadorModelo";
 import PegarSpecs from "./components/PegarSpecs";
 import MedidorBarras from "./components/MedidorBarras";
+import PasosProgreso from "./components/PasosProgreso";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -50,6 +51,11 @@ export default function PantallaAnalisis() {
   }, []);
 
   const faltantes = detectado ? camposFaltantes(detectado) : [];
+
+  const identificado = Boolean(
+    confirmados.modelo_equipo_id || confirmados.cpu_puntaje || confirmados.ram_gb
+  );
+  const pasoActivo = resultado ? 3 : perfilId ? 2 : identificado ? 1 : 0;
 
   function actualizarCampo(campo, valor) {
     setConfirmados((prev) => ({ ...prev, [campo]: valor }));
@@ -118,12 +124,18 @@ export default function PantallaAnalisis() {
         </header>
 
         <div className="space-y-10">
+            <PasosProgreso activo={pasoActivo} />
+
             <PanelEscaneo onCompletado={manejarDeteccion} />
 
             {detectado && (
               <>
                 <div className="lg:grid lg:grid-cols-2 lg:gap-8 space-y-10 lg:space-y-0">
-                  <section className="space-y-3">
+                  <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 space-y-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-mono font-medium shrink-0" style={{ background: "var(--color-accent-soft)", color: "var(--color-accent)" }}>1</span>
+                      <p className="font-display text-sm font-medium text-[var(--color-text)]">Identificá tu equipo</p>
+                    </div>
                     <BuscadorModelo onSeleccionar={(m) => actualizarCampo("modelo_equipo_id", m.id)} />
 
                     <PegarSpecs
@@ -145,16 +157,17 @@ export default function PantallaAnalisis() {
                         <input
                           type="number"
                           onChange={(e) => actualizarCampo("ram_gb", Number(e.target.value))}
-                          className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-2.5 text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+                          className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3.5 py-2.5 text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
                         />
                       </div>
                     )}
                   </section>
 
-                  <section className="space-y-3">
-                    <p className="font-mono text-xs text-[var(--color-text-muted)] tracking-wide">
-                      para_qué_lo_vas_a_usar
-                    </p>
+                  <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 space-y-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-mono font-medium shrink-0" style={{ background: "var(--color-accent-soft)", color: "var(--color-accent)" }}>2</span>
+                      <p className="font-display text-sm font-medium text-[var(--color-text)]">¿Para qué lo vas a usar?</p>
+                    </div>
                     {perfiles === null ? (
                       <p className="text-sm text-[var(--color-text-faint)]">Cargando rubros...</p>
                     ) : errorPerfiles ? (

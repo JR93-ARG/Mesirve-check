@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Modal from "./Modal";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -49,6 +50,7 @@ function BloqueComando({ comando }) {
 
 export default function PegarSpecs({ sistemaOperativo, onInterpretado }) {
   const [abierto, setAbierto] = useState(false);
+  const [modalAbierto, setModalAbierto] = useState(false);
   const [texto, setTexto] = useState("");
   const [procesando, setProcesando] = useState(false);
   const [resultado, setResultado] = useState(null);
@@ -87,8 +89,6 @@ export default function PegarSpecs({ sistemaOperativo, onInterpretado }) {
         return;
       }
     }
-    // si no había imagen en el portapapeles, se deja que el pegado normal
-    // de texto siga su curso en el textarea
   }
 
   async function interpretar() {
@@ -127,28 +127,17 @@ export default function PegarSpecs({ sistemaOperativo, onInterpretado }) {
 
   return (
     <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 space-y-3">
-      <div>
-        <p className="font-mono text-xs text-[var(--color-text-muted)] mb-1.5 tracking-wide">
-          cómo_encontrarlas ({sistemaOperativo ?? "tu sistema"})
-        </p>
-        <ol className="text-sm text-[var(--color-text)] space-y-1 list-decimal list-inside">
-          {guia.pasos.map((paso, i) => (
-            <li key={i}>{paso}</li>
-          ))}
-        </ol>
-        {guia.atajo && <p className="text-xs text-[var(--color-text-faint)] mt-1">{guia.atajo}</p>}
+      <div className="flex items-center justify-between">
+        <p className="font-mono text-xs text-[var(--color-text-muted)] tracking-wide">pegar_specs</p>
+        <button
+          type="button"
+          onClick={() => setModalAbierto(true)}
+          className="flex items-center gap-1 text-xs font-mono text-[var(--color-accent)] hover:underline"
+        >
+          <span className="w-4 h-4 rounded-full border border-current flex items-center justify-center text-[10px]">i</span>
+          cómo encontrarlas
+        </button>
       </div>
-
-      {(sistemaOperativo === "Windows" || sistemaOperativo === "macOS") && (
-        <div className="space-y-1.5 pt-1">
-          <p className="text-xs text-[var(--color-text-muted)]">
-            O, más exacto: abrí {sistemaOperativo === "Windows" ? "PowerShell" : "la Terminal"}, pegá este
-            comando y Enter — es de lectura, no instala ni descarga nada, podés leerlo antes de correrlo.
-            Después pegá el resultado acá abajo.
-          </p>
-          <BloqueComando comando={sistemaOperativo === "Windows" ? COMANDO_WINDOWS : COMANDO_MAC} />
-        </div>
-      )}
 
       <textarea
         value={texto}
@@ -192,9 +181,6 @@ export default function PegarSpecs({ sistemaOperativo, onInterpretado }) {
           {procesando ? "Leyendo imagen..." : "Elegir captura de pantalla"}
         </span>
       </label>
-      <p className="text-xs text-[var(--color-text-faint)]">
-        Menos preciso que pegar texto, pero sirve para datos que no aparecen en el texto copiado (como la GPU en Windows 11).
-      </p>
 
       {resultado && (
         <div className="text-xs font-mono space-y-1 pt-1 border-t border-[var(--color-border)]">
@@ -236,6 +222,33 @@ export default function PegarSpecs({ sistemaOperativo, onInterpretado }) {
           )}
         </div>
       )}
+
+      <Modal abierto={modalAbierto} onCerrar={() => setModalAbierto(false)} titulo={`Cómo encontrarlas (${sistemaOperativo ?? "tu sistema"})`}>
+        <div className="space-y-4">
+          <ol className="text-sm text-[var(--color-text)] space-y-1.5 list-decimal list-inside">
+            {guia.pasos.map((paso, i) => (
+              <li key={i}>{paso}</li>
+            ))}
+          </ol>
+          {guia.atajo && <p className="text-xs text-[var(--color-text-faint)]">{guia.atajo}</p>}
+
+          {(sistemaOperativo === "Windows" || sistemaOperativo === "macOS") && (
+            <div className="space-y-1.5 pt-2 border-t border-[var(--color-border)]">
+              <p className="text-xs text-[var(--color-text-muted)]">
+                O, más exacto: abrí {sistemaOperativo === "Windows" ? "PowerShell" : "la Terminal"}, pegá este
+                comando y Enter — es de lectura, no instala ni descarga nada, podés leerlo antes de correrlo.
+                Después pegá el resultado en el cuadro de texto.
+              </p>
+              <BloqueComando comando={sistemaOperativo === "Windows" ? COMANDO_WINDOWS : COMANDO_MAC} />
+            </div>
+          )}
+
+          <p className="text-xs text-[var(--color-text-faint)] pt-2 border-t border-[var(--color-border)]">
+            La captura de pantalla es menos precisa que pegar texto, pero sirve para datos que no aparecen en el
+            texto copiado (como la GPU en Windows 11).
+          </p>
+        </div>
+      </Modal>
     </div>
   );
 }
