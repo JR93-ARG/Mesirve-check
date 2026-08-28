@@ -9,6 +9,7 @@ from PIL import Image
 import pytesseract
 
 from app.database import get_db
+from app.estimador import estimar_cpu, estimar_gpu
 
 router = APIRouter(prefix="/api/componentes", tags=["componentes"])
 
@@ -100,17 +101,22 @@ def _lineas_candidatas(texto: str, palabras_clave: list[str]) -> list[str]:
 
 
 async def _mejor_match(db: AsyncSession, tipo: str, lineas: list[str]):
-    """Compara por similitud de trigramas contra el catálogo — tolera SKUs
-    que no están exactos (ej. i3-10105 pegado vs i3-10100 cargado), a
-    diferencia de una búsqueda de texto que exige coincidencia de palabras
-    completas. UMBRAL_MINIMO evita devolver algo random cuando no hay
-    ningún parecido real."""
+    """Combina dos estrategias: primero busca en el catálogo curado por
+    similitud de texto (más confiable cuando pega bien); si no hay una
+    coincidencia fuerte ahí, prueba el estimador por patrón de nombre
+    (cubre cualquier SKU de una familia conocida, esté o no cargado).
+    Prioridad: catálogo con similitud alta > estimador por patrón >
+    catálogo con similitud baja > nada."""
+    UMBRAL_ALTO = 0.45
     UMBRAL_MINIMO = 0.15
-    mejor = None
+    mejor_catalogo = None
+    mejor_estimado = None
+
     for linea in lineas:
         descriptor = _limpiar_descriptor(linea)
         if len(descriptor) < 3:
             continue
+
         query = text("""
             SELECT id, marca, modelo, puntaje_relativo,
                    similarity(marca || ' ' || modelo, :texto) AS puntaje_similitud
@@ -121,11 +127,27 @@ async def _mejor_match(db: AsyncSession, tipo: str, lineas: list[str]):
         """)
         fila = (await db.execute(query, {"texto": descriptor, "tipo": tipo})).mappings().first()
         if fila and fila["puntaje_similitud"] >= UMBRAL_MINIMO:
-            if not mejor or fila["puntaje_similitud"] > mejor["puntaje_similitud"]:
-                mejor = dict(fila)
-    if mejor:
-        mejor["exacto"] = mejor["puntaje_similitud"] >= 0.45
-    return mejor
+            if not mejor_catalogo or fila["puntaje_similitud"] > mejor_catalogo["puntaje_similitud"]:
+                mejor_catalogo = dict(fila)
+
+        if not mejor_estimado:
+            estimacion = estimar_cpu(descriptor) if tipo == "cpu" else estimar_gpu(descriptor)
+            if estimacion:
+                mejor_estimado = estimacion
+
+    if mejor_catalogo and mejor_catalogo["puntaje_similitud"] >= UMBRAL_ALTO:
+        mejor_catalogo["exacto"] = True
+        mejor_catalogo["estimado"] = False
+        return mejor_catalogo
+    if mejor_estimado:
+        mejor_estimado["exacto"] = False
+        mejor_estimado["estimado"] = True
+        return mejor_estimado
+    if mejor_catalogo:
+        mejor_catalogo["exacto"] = False
+        mejor_catalogo["estimado"] = False
+        return mejor_catalogo
+    return None
 
 
 async def _interpretar_texto(texto: str, db: AsyncSession) -> dict:

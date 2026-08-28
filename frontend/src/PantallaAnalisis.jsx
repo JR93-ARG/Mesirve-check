@@ -197,10 +197,18 @@ export default function PantallaAnalisis() {
                   <span className="text-sm text-[var(--color-text-muted)] w-32 shrink-0">
                     {ETIQUETA_COMPONENTE[d.componente] ?? d.componente}
                   </span>
-                  <MedidorBarras puntaje={d.puntaje} segmentos={12} contenedorAlto="h-6" />
-                  <span className="font-mono text-xs text-[var(--color-text-faint)] ml-auto">
-                    {Math.round(d.puntaje)}
-                  </span>
+                  {d.sin_datos ? (
+                    <span className="text-xs font-mono text-[var(--color-text-faint)]">
+                      sin datos — no cuenta en el promedio
+                    </span>
+                  ) : (
+                    <>
+                      <MedidorBarras puntaje={d.puntaje} segmentos={12} contenedorAlto="h-6" />
+                      <span className="font-mono text-xs text-[var(--color-text-faint)] ml-auto">
+                        {Math.round(d.puntaje)}
+                      </span>
+                    </>
+                  )}
                 </div>
               ))}
             </div>

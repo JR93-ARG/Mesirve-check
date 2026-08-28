@@ -51,8 +51,22 @@ async def crear_analisis(solicitud: SolicitudAnalisis, db: AsyncSession = Depend
     for req in requisitos:
         extractor = VALOR_POR_COMPONENTE.get(req["componente"])
         valor = extractor(solicitud.datos_confirmados) if extractor else None
-        puntaje = calcular_puntaje_componente(valor, req["umbral_minimo"], req["umbral_recomendado"])
 
+        if valor is None:
+            # Sin dato no es lo mismo que "puntaje 0" — no penalizamos algo
+            # que no pudimos medir, simplemente no entra en el promedio.
+            desglose.append({
+                "componente": req["componente"],
+                "valor_detectado": None,
+                "umbral_minimo": float(req["umbral_minimo"]) if req["umbral_minimo"] is not None else None,
+                "umbral_recomendado": float(req["umbral_recomendado"]) if req["umbral_recomendado"] is not None else None,
+                "puntaje": None,
+                "peso": float(req["peso"]),
+                "sin_datos": True,
+            })
+            continue
+
+        puntaje = calcular_puntaje_componente(valor, req["umbral_minimo"], req["umbral_recomendado"])
         desglose.append({
             "componente": req["componente"],
             "valor_detectado": valor,
@@ -60,16 +74,23 @@ async def crear_analisis(solicitud: SolicitudAnalisis, db: AsyncSession = Depend
             "umbral_recomendado": float(req["umbral_recomendado"]) if req["umbral_recomendado"] is not None else None,
             "puntaje": round(puntaje, 1),
             "peso": float(req["peso"]),
+            "sin_datos": False,
         })
         score_total += puntaje * float(req["peso"])
         peso_total += float(req["peso"])
 
-    score_final = score_total / peso_total if peso_total > 0 else 0.0
-    veredicto = (
-        "recomendado" if score_final >= 75 else
-        "aceptable" if score_final >= 50 else
-        "no recomendado"
-    )
+    if peso_total == 0:
+        # No se pudo medir NINGÚN componente del rubro — no hay base para
+        # dar un veredicto, mejor decirlo claro que inventar un número.
+        score_final = 0.0
+        veredicto = "sin datos suficientes"
+    else:
+        score_final = score_total / peso_total
+        veredicto = (
+            "recomendado" if score_final >= 75 else
+            "aceptable" if score_final >= 50 else
+            "no recomendado"
+        )
 
     insert_query = text("""
         INSERT INTO analisis (
