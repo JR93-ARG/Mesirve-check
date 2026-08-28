@@ -28,6 +28,7 @@ export default function PantallaAnalisis() {
   const [perfiles, setPerfiles] = useState(null);
   const [perfilId, setPerfilId] = useState(null);
   const [resultado, setResultado] = useState(null);
+  const [recomendaciones, setRecomendaciones] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [errorPerfiles, setErrorPerfiles] = useState(false);
   const [errorAnalisis, setErrorAnalisis] = useState(null);
@@ -83,6 +84,15 @@ export default function PantallaAnalisis() {
         throw new Error(`Respuesta inesperada del servidor (HTTP ${res.status})`);
       }
       setResultado(data);
+
+      if (data.veredicto !== "recomendado") {
+        fetch(`${API_URL}/api/perfiles/${perfilId}/recomendacion`)
+          .then((r) => r.json())
+          .then(setRecomendaciones)
+          .catch(() => setRecomendaciones(null));
+      } else {
+        setRecomendaciones(null);
+      }
     } catch (e) {
       console.error("Error al analizar:", e);
       setErrorAnalisis("No pudimos completar el análisis. Probá de nuevo en unos segundos.");
@@ -192,25 +202,36 @@ export default function PantallaAnalisis() {
             </div>
 
             <div className="space-y-4">
-              {resultado.desglose.map((d) => (
-                <div key={d.componente} className="flex items-center gap-4">
-                  <span className="text-sm text-[var(--color-text-muted)] w-32 shrink-0">
-                    {ETIQUETA_COMPONENTE[d.componente] ?? d.componente}
-                  </span>
-                  {d.sin_datos ? (
-                    <span className="text-xs font-mono text-[var(--color-text-faint)]">
-                      sin datos — no cuenta en el promedio
-                    </span>
-                  ) : (
-                    <>
-                      <MedidorBarras puntaje={d.puntaje} segmentos={12} contenedorAlto="h-6" />
-                      <span className="font-mono text-xs text-[var(--color-text-faint)] ml-auto">
-                        {Math.round(d.puntaje)}
+              {resultado.desglose.map((d) => {
+                const recomendacion = recomendaciones?.find((r) => r.componente === d.componente);
+                const mostrarSugerencia = recomendacion?.sugerencia && !d.sin_datos && d.puntaje < 75;
+                return (
+                  <div key={d.componente} className="space-y-1">
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm text-[var(--color-text-muted)] w-32 shrink-0">
+                        {ETIQUETA_COMPONENTE[d.componente] ?? d.componente}
                       </span>
-                    </>
-                  )}
-                </div>
-              ))}
+                      {d.sin_datos ? (
+                        <span className="text-xs font-mono text-[var(--color-text-faint)]">
+                          sin datos — no cuenta en el promedio
+                        </span>
+                      ) : (
+                        <>
+                          <MedidorBarras puntaje={d.puntaje} segmentos={12} contenedorAlto="h-6" />
+                          <span className="font-mono text-xs text-[var(--color-text-faint)] ml-auto">
+                            {Math.round(d.puntaje)}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    {mostrarSugerencia && (
+                      <p className="text-xs text-[var(--color-text-faint)] pl-[8.5rem]">
+                        para este uso, con <span className="text-[var(--color-accent)]">{recomendacion.sugerencia}</span> ya alcanza
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </section>
         )}
