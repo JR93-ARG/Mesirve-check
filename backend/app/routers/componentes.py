@@ -98,22 +98,31 @@ def _lineas_candidatas(texto: str, palabras_clave: list[str]) -> list[str]:
 
 
 async def _mejor_match(db: AsyncSession, tipo: str, lineas: list[str]):
-    """Combina dos estrategias: primero busca en el catálogo curado por
-    similitud de texto (más confiable cuando pega bien); si no hay una
-    coincidencia fuerte ahí, prueba el estimador por patrón de nombre
-    (cubre cualquier SKU de una familia conocida, esté o no cargado).
-    Prioridad: catálogo con similitud alta > estimador por patrón >
-    catálogo con similitud baja > nada."""
-    UMBRAL_ALTO = 0.45
-    UMBRAL_MINIMO = 0.15
-    mejor_catalogo = None
-    mejor_estimado = None
+    """El estimador por patrón (regex sobre la nomenclatura del fabricante)
+    es más confiable que la similitud de texto para cualquier SKU
+    estándar — no depende de "parecerse" a algo ya cargado, extrae el dato
+    exacto. Por eso se prueba primero en TODAS las líneas candidatas.
+    El catálogo por similitud queda como respaldo solo para nombres que el
+    estimador no reconoce (ej. Pentium, Celeron, FX viejos) — y ahí sí hay
+    riesgo de falsos positivos por prefijos compartidos ("Intel Core"),
+    así que el umbral es más exigente que antes."""
+    UMBRAL_MINIMO = 0.25
 
     for linea in lineas:
         descriptor = _limpiar_descriptor(linea)
         if len(descriptor) < 3:
             continue
+        estimacion = estimar_cpu(descriptor) if tipo == "cpu" else estimar_gpu(descriptor)
+        if estimacion:
+            estimacion["exacto"] = False
+            estimacion["estimado"] = True
+            return estimacion
 
+    mejor_catalogo = None
+    for linea in lineas:
+        descriptor = _limpiar_descriptor(linea)
+        if len(descriptor) < 3:
+            continue
         query = text("""
             SELECT id, marca, modelo, puntaje_relativo,
                    similarity(marca || ' ' || modelo, :texto) AS puntaje_similitud
@@ -127,21 +136,8 @@ async def _mejor_match(db: AsyncSession, tipo: str, lineas: list[str]):
             if not mejor_catalogo or fila["puntaje_similitud"] > mejor_catalogo["puntaje_similitud"]:
                 mejor_catalogo = dict(fila)
 
-        if not mejor_estimado:
-            estimacion = estimar_cpu(descriptor) if tipo == "cpu" else estimar_gpu(descriptor)
-            if estimacion:
-                mejor_estimado = estimacion
-
-    if mejor_catalogo and mejor_catalogo["puntaje_similitud"] >= UMBRAL_ALTO:
-        mejor_catalogo["exacto"] = True
-        mejor_catalogo["estimado"] = False
-        return mejor_catalogo
-    if mejor_estimado:
-        mejor_estimado["exacto"] = False
-        mejor_estimado["estimado"] = True
-        return mejor_estimado
     if mejor_catalogo:
-        mejor_catalogo["exacto"] = False
+        mejor_catalogo["exacto"] = mejor_catalogo["puntaje_similitud"] >= 0.55
         mejor_catalogo["estimado"] = False
         return mejor_catalogo
     return None
