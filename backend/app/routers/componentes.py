@@ -38,12 +38,18 @@ PATRON_CANTIDAD = re.compile(r"(\d+(?:[.,]\d+)?)\s*(GB|TB)\b", re.IGNORECASE)
 PATRON_TIPO_DISCO = re.compile(r"\b(SSD|HDD|eMMC)\b", re.IGNORECASE)
 
 
-def _ventana(lineas: list[str], desde: int, largo: int = 3) -> str:
-    """Une la línea `desde` con las siguientes, para capturar el caso en
-    que la etiqueta y el valor están apilados en líneas distintas (típico
-    de layouts de tarjetas, como el resumen de Windows 11) en vez de en la
-    misma línea (típico de tablas de texto plano)."""
-    return " ".join(l.strip() for l in lineas[desde : desde + largo] if l.strip())
+def _ventana(lineas: list[str], desde: int, largo: int = 4) -> str:
+    """Une la línea `desde` con las siguientes que tengan contenido real —
+    cuenta líneas CON TEXTO, no líneas crudas, porque el OCR suele meter
+    líneas en blanco entre cada bloque visual y con un conteo crudo la
+    ventana se queda corta antes de alcanzar el valor real."""
+    recolectadas = []
+    i = desde
+    while i < len(lineas) and len(recolectadas) < largo:
+        if lineas[i].strip():
+            recolectadas.append(lineas[i].strip())
+        i += 1
+    return " ".join(recolectadas)
 
 
 def _extraer_ram_gb(texto: str) -> float | None:

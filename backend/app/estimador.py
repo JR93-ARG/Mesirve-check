@@ -29,7 +29,7 @@ def estimar_cpu(texto: str):
             "puntaje_relativo": base,
         }
 
-    m = re.search(r"\bi([3579])[\s-]?(\d{4,5})([A-Z]*)\b", t, re.IGNORECASE)
+    m = re.search(r"\b[i1]([3579])[\s-]?(\d{4,5})([A-Z]*)\b", t, re.IGNORECASE)
     if m:
         tier = int(m.group(1))
         numero = m.group(2)
