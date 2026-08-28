@@ -34,48 +34,44 @@ class TextoPegado(BaseModel):
 
 
 # Patrones de RAM: "16 GB", "16.0 GB", "Memoria RAM  16,0 GB", "16384 MB"
-PATRON_RAM_GB = re.compile(r"(\d+(?:[.,]\d+)?)\s*GB", re.IGNORECASE)
-PATRON_RAM_MB = re.compile(r"(\d+)\s*MB", re.IGNORECASE)
-PATRON_ALMACENAMIENTO_DESPUES = re.compile(
-    r"(\d+(?:[.,]\d+)?)\s*(GB|TB)\b.{0,20}?\b(SSD|HDD|eMMC)\b",
-    re.IGNORECASE,
-)
-PATRON_ALMACENAMIENTO_ANTES = re.compile(
-    r"\b(almacenamiento|storage|disco)\b.{0,25}?(\d+(?:[.,]\d+)?)\s*(GB|TB)",
-    re.IGNORECASE,
-)
+PATRON_CANTIDAD = re.compile(r"(\d+(?:[.,]\d+)?)\s*(GB|TB)\b", re.IGNORECASE)
+PATRON_TIPO_DISCO = re.compile(r"\b(SSD|HDD|eMMC)\b", re.IGNORECASE)
+
+
+def _ventana(lineas: list[str], desde: int, largo: int = 3) -> str:
+    """Une la línea `desde` con las siguientes, para capturar el caso en
+    que la etiqueta y el valor están apilados en líneas distintas (típico
+    de layouts de tarjetas, como el resumen de Windows 11) en vez de en la
+    misma línea (típico de tablas de texto plano)."""
+    return " ".join(l.strip() for l in lineas[desde : desde + largo] if l.strip())
 
 
 def _extraer_ram_gb(texto: str) -> float | None:
-    for linea in texto.splitlines():
+    lineas = texto.splitlines()
+    for i, linea in enumerate(lineas):
         if re.search(r"\b(ram|memoria)\b", linea, re.IGNORECASE) and not re.search(
             r"\b(ssd|hdd|almacenamiento|storage|disco|gráfic|graphics|vram)\b", linea, re.IGNORECASE
         ):
-            m = PATRON_RAM_GB.search(linea)
+            m = PATRON_CANTIDAD.search(_ventana(lineas, i))
             if m:
-                return float(m.group(1).replace(",", "."))
+                valor = float(m.group(1).replace(",", "."))
+                return valor * 1024 if m.group(2).upper() == "TB" else valor
     return None
 
 
 def _extraer_almacenamiento_gb(texto: str):
-    m = PATRON_ALMACENAMIENTO_DESPUES.search(texto)
-    if m:
-        valor = float(m.group(1).replace(",", "."))
-        unidad = m.group(2).upper()
-        tipo = m.group(3).upper()
-        if unidad == "TB":
-            valor *= 1024
-        tipo_normalizado = "ssd" if "SSD" in tipo else "hdd" if "HDD" in tipo else "emmc"
-        return valor, tipo_normalizado
-
-    m = PATRON_ALMACENAMIENTO_ANTES.search(texto)
-    if m:
-        valor = float(m.group(2).replace(",", "."))
-        unidad = m.group(3).upper()
-        if unidad == "TB":
-            valor *= 1024
-        return valor, None  # etiqueta no dice si es SSD o HDD
-
+    lineas = texto.splitlines()
+    for i, linea in enumerate(lineas):
+        if re.search(r"\b(almacenamiento|storage|disco)\b", linea, re.IGNORECASE):
+            bloque = _ventana(lineas, i)
+            m = PATRON_CANTIDAD.search(bloque)
+            if m:
+                valor = float(m.group(1).replace(",", "."))
+                if m.group(2).upper() == "TB":
+                    valor *= 1024
+                tipo_m = PATRON_TIPO_DISCO.search(bloque)
+                tipo = tipo_m.group(1).lower() if tipo_m else None
+                return valor, tipo
     return None, None
 
 
@@ -93,10 +89,11 @@ def _limpiar_descriptor(linea: str) -> str:
 
 
 def _lineas_candidatas(texto: str, palabras_clave: list[str]) -> list[str]:
+    lineas = texto.splitlines()
     candidatas = []
-    for linea in texto.splitlines():
+    for i, linea in enumerate(lineas):
         if any(p in linea.lower() for p in palabras_clave):
-            candidatas.append(linea)
+            candidatas.append(_ventana(lineas, i))
     return candidatas
 
 
