@@ -4,10 +4,10 @@ import SelectorRubro from "./SelectorRubro";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const CATEGORIAS = [
-  { id: "trabajo", nombre: "Trabajo", descripcion: "Oficina, diseño, desarrollo, ventas" },
-  { id: "estudio", nombre: "Estudio", descripcion: "Carreras universitarias y afines" },
-  { id: "ocio", nombre: "Ocio", descripcion: "Navegación, streaming, uso liviano" },
-  { id: "juegos", nombre: "Juegos", descripcion: "Desde retro hasta AAA moderno" },
+  { id: "trabajo", nombre: "Trabajo" },
+  { id: "estudio", nombre: "Estudio" },
+  { id: "ocio", nombre: "Ocio" },
+  { id: "juegos", nombre: "Juegos" },
 ];
 
 export default function SelectorUso({ onCambio }) {
@@ -51,14 +51,35 @@ export default function SelectorUso({ onCambio }) {
 
   return (
     <div className="space-y-4">
-      <SelectorRubro
-        perfiles={CATEGORIAS.map((c) => ({ id: c.id, nombre: c.nombre, descripcion: c.descripcion }))}
-        seleccionado={categoria}
-        onSeleccionar={setCategoria}
-      />
+      <div>
+        <p className="font-mono text-[11px] text-[var(--color-text-faint)] tracking-wide mb-2">categoría</p>
+        <div className="flex flex-wrap gap-2">
+          {CATEGORIAS.map((c) => {
+            const activo = categoria === c.id;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setCategoria(c.id)}
+                className="text-sm font-display font-medium rounded-full px-4 py-1.5 border transition-colors"
+                style={{
+                  borderColor: activo ? "var(--color-accent)" : "var(--color-border)",
+                  background: activo ? "var(--color-accent)" : "transparent",
+                  color: activo ? "#0c1210" : "var(--color-text-muted)",
+                }}
+              >
+                {c.nombre}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {categoria && (
-        <div className="pt-1">
+        <div className="pl-4 border-l-2 space-y-2" style={{ borderColor: "var(--color-accent-dim)" }}>
+          <p className="font-mono text-[11px] text-[var(--color-text-faint)] tracking-wide">
+            rubro dentro de {CATEGORIAS.find((c) => c.id === categoria)?.nombre.toLowerCase()}
+          </p>
           {perfiles === null ? (
             <p className="text-sm text-[var(--color-text-faint)]">Cargando...</p>
           ) : (
@@ -68,9 +89,9 @@ export default function SelectorUso({ onCambio }) {
       )}
 
       {programas && (
-        <div className="pt-2 border-t border-[var(--color-border)]">
-          <p className="font-mono text-xs text-[var(--color-text-muted)] tracking-wide mb-2">
-            programas_puntuales (opcional — afina el resultado)
+        <div className="pl-4 border-l-2 space-y-2" style={{ borderColor: "var(--color-accent-dim)" }}>
+          <p className="font-mono text-[11px] text-[var(--color-text-faint)] tracking-wide">
+            programas puntuales (opcional — afina el resultado)
           </p>
           <div className="flex flex-wrap gap-2">
             {programas.map((p) => {
