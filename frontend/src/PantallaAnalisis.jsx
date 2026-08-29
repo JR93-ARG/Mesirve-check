@@ -24,6 +24,7 @@ const ETIQUETA_VEREDICTO = {
 };
 
 export default function PantallaAnalisis() {
+  const [modo, setModo] = useState(null); // null | "automatico" | "manual"
   const [detectado, setDetectado] = useState(null);
   const [confirmados, setConfirmados] = useState({});
   const [perfilId, setPerfilId] = useState(null);
@@ -38,6 +39,16 @@ export default function PantallaAnalisis() {
     setPerfilId(id);
     setProgramaIds(progs);
   }, []);
+
+  function elegirModo(nuevo) {
+    setModo(nuevo);
+    if (nuevo === "manual") {
+      // En modo manual no hay escaneo, así que arrancamos con un objeto
+      // vacío — el usuario elige el sistema operativo a mano para que la
+      // guía de PegarSpecs le muestre los pasos correctos.
+      setDetectado({ plataforma: "Windows", ram_gb_aprox: null, gpu_renderer: null, conexion_mbps: null });
+    }
+  }
 
   const faltantes = detectado ? camposFaltantes(detectado) : [];
 
@@ -108,7 +119,7 @@ export default function PantallaAnalisis() {
             ¿Le sirve este equipo?
           </h1>
           <p className="text-[var(--color-text-muted)] text-sm leading-relaxed max-w-xl">
-            Leemos lo que tu navegador puede mostrar en vivo. Confirmá lo que falta y te decimos
+            Elegí si querés que lo detectemos automáticamente o cargar vos los datos, y te decimos
             si el equipo rinde para lo que lo vas a usar.
           </p>
         </header>
@@ -116,7 +127,50 @@ export default function PantallaAnalisis() {
         <div className="space-y-10">
             <PasosProgreso activo={pasoActivo} />
 
-            <PanelEscaneo onCompletado={manejarDeteccion} />
+            {!modo && (
+              <div className="grid sm:grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => elegirModo("automatico")}
+                  className="text-left rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 hover:border-[var(--color-accent)] transition-colors"
+                >
+                  <p className="font-display text-base font-semibold text-[var(--color-text)] mb-1">Detectarlo automáticamente</p>
+                  <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+                    El sitio lee en vivo lo que el navegador puede mostrar de esta PC, y después
+                    confirmás lo que falte. Más rápido si estás parado frente al equipo.
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => elegirModo("manual")}
+                  className="text-left rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 hover:border-[var(--color-accent)] transition-colors"
+                >
+                  <p className="font-display text-base font-semibold text-[var(--color-text)] mb-1">Cargar los datos yo mismo</p>
+                  <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+                    Ideal si ya sabés el modelo, procesador o specs de memoria — te salteás el
+                    escaneo y vas directo a completar los datos a mano.
+                  </p>
+                </button>
+              </div>
+            )}
+
+            {modo === "automatico" && <PanelEscaneo onCompletado={manejarDeteccion} />}
+
+            {modo === "manual" && detectado && (
+              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 flex items-center gap-3">
+                <label className="font-mono text-xs text-[var(--color-text-muted)] tracking-wide shrink-0">sistema_operativo</label>
+                <select
+                  value={detectado.plataforma}
+                  onChange={(e) => setDetectado((prev) => ({ ...prev, plataforma: e.target.value }))}
+                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-1.5 text-sm text-[var(--color-text)]"
+                >
+                  <option value="Windows">Windows</option>
+                  <option value="macOS">macOS</option>
+                  <option value="Android">Android</option>
+                  <option value="iOS">iOS</option>
+                </select>
+              </div>
+            )}
 
             {detectado && (
               <>
