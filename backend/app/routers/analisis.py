@@ -140,7 +140,8 @@ async def crear_analisis(request: Request, solicitud: SolicitudAnalisis, db: Asy
     })).mappings().first()
     await db.commit()
 
-    recomendacion_so = evaluar_sistema_operativo(
+    recomendacion_so = await evaluar_sistema_operativo(
+        db,
         solicitud.datos_confirmados.ram_gb,
         solicitud.datos_confirmados.tipo_almacenamiento,
         solicitud.datos_confirmados.cpu_puntaje,

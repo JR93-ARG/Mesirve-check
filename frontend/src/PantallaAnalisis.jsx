@@ -146,7 +146,13 @@ export default function PantallaAnalisis() {
                         </label>
                         <input
                           type="number"
-                          onChange={(e) => actualizarCampo("ram_gb", Number(e.target.value))}
+                          min="0.5"
+                          max="512"
+                          step="0.5"
+                          onChange={(e) => {
+                            const valor = Number(e.target.value);
+                            if (valor > 0 && valor <= 512) actualizarCampo("ram_gb", valor);
+                          }}
                           className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3.5 py-2.5 text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
                         />
                       </div>
@@ -242,11 +248,42 @@ export default function PantallaAnalisis() {
                 <p className="font-display text-lg font-semibold text-[var(--color-text)]">
                   {resultado.recomendacion_so.etiqueta}
                 </p>
-                <div className="space-y-3">
+                <p className="text-xs text-[var(--color-text-faint)]">
+                  Estas son las opciones que le caben a este hardware — no hay una sola "correcta",
+                  cada una prioriza algo distinto.
+                </p>
+                <div className="grid sm:grid-cols-2 gap-3">
                   {resultado.recomendacion_so.opciones.map((op, i) => (
-                    <div key={i}>
-                      <p className="text-sm font-medium" style={{ color: "var(--color-accent)" }}>{op.sistema}</p>
-                      <p className="text-xs text-[var(--color-text-muted)] mt-0.5 leading-relaxed">{op.motivo}</p>
+                    <div key={i} className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-3.5 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium" style={{ color: "var(--color-accent)" }}>{op.nombre}</p>
+                        {op.liviano && (
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: "var(--color-accent-soft)", color: "var(--color-accent)" }}>
+                            liviano
+                          </span>
+                        )}
+                      </div>
+                      {op.pros?.length > 0 && (
+                        <ul className="space-y-0.5">
+                          {op.pros.map((p, j) => (
+                            <li key={j} className="text-xs text-[var(--color-text-muted)]">
+                              <span style={{ color: "var(--color-good)" }}>+</span> {p}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {op.contras?.length > 0 && (
+                        <ul className="space-y-0.5">
+                          {op.contras.map((c, j) => (
+                            <li key={j} className="text-xs text-[var(--color-text-muted)]">
+                              <span style={{ color: "var(--color-warn)" }}>−</span> {c}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {op.nota_extra && (
+                        <p className="text-xs text-[var(--color-text-faint)] pt-1 border-t border-[var(--color-border)]">{op.nota_extra}</p>
+                      )}
                     </div>
                   ))}
                 </div>

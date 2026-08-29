@@ -52,11 +52,11 @@ function detectarGPU() {
 }
 
 // Qué campos quedaron sin dato y necesitan confirmación manual del usuario.
+// Nota: hoy solo "ram" se usa en la pantalla (para mostrar el input
+// manual). Las demás no se estaban consumiendo — si en algún momento se
+// agrega un input manual de GPU/conexión, acá está la base para eso.
 export function camposFaltantes(datos) {
   const faltantes = [];
   if (!datos.ram_gb_aprox) faltantes.push("ram");
-  if (!datos.gpu_renderer) faltantes.push("gpu");
-  if (!datos.conexion_mbps) faltantes.push("conexion");
-  faltantes.push("marca_modelo"); // nunca se detecta en desktop, siempre se pide
   return faltantes;
 }

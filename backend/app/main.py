@@ -7,7 +7,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
-from app.routers import perfiles, modelos, analisis, componentes
+from app.routers import perfiles, modelos, analisis, componentes, admin
 from app.migraciones import aplicar_migraciones_pendientes
 
 logging.basicConfig(level=logging.INFO)
@@ -60,6 +60,7 @@ app.include_router(perfiles.router)
 app.include_router(modelos.router)
 app.include_router(analisis.router)
 app.include_router(componentes.router)
+app.include_router(admin.router)
 
 
 @app.get("/")
